@@ -1,0 +1,75 @@
+# Axolotl GRPO Configuration
+# Run: axolotl train templates/axolotl/grpo_lora.yaml
+
+model_config:
+  base_model: "meta-llama/Meta-Llama-3-8B-Instruct"
+  model_type: "LlamaForCausalLM"
+  torch_dtype: "bfloat16"
+  attn_implementation: "flash_attention_2"
+
+tokenizer_config:
+  tokenizer_type: "LlamaTokenizer"
+  chat_template: "llama3"
+
+rl_config:
+  rl_type: "grpo"
+  num_generations: 8
+  max_completion_length: 1024
+  temperature: 0.7
+  top_p: 0.9
+  beta: 0.04
+  epsilon: 0.2
+  epsilon_high: 0.28
+
+reward_functions:
+  - type: "format"
+    weight: 1.0
+  - type: "correctness"
+    dataset: "gsm8k"
+    weight: 1.0
+  - type: "length"
+    weight: 0.1
+
+datasets:
+  - path: "trl-lib/gsm8k"
+    type: "rl"
+    prompt_column: "question"
+    answer_column: "answer"
+
+sequence_len: 4096
+sample_packing: false
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules:
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+
+optimizer: "adamw_torch_fused"
+learning_rate: 1e-6
+lr_scheduler: "cosine"
+warmup_steps: 50
+num_epochs: 1
+micro_batch_size: 1
+gradient_accumulation_steps: 8
+
+gradient_checkpointing: true
+flash_attention: true
+fsdp: "full_shard"
+fsdp_config:
+  fsdp_version: 2
+  mixed_precision: "bf16"
+
+wandb_project: "axolotl-grpo"
+output_dir: "axolotl_grpo_output"
+save_steps: 100
+logging_steps: 5
+eval_steps: 100
+save_total_limit: 3

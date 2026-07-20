@@ -1,14 +1,14 @@
 ---
 name: llm-training-comprehensive
-description: All-in-one skill for training and fine-tuning LLMs (Llama, Qwen, Mistral, Gemma, Phi) from scratch or via PEFT on Kaggle, Colab, local, or cloud GPUs.
-tags: [llm, fine-tuning, lora, qlora, sft, dpo, grpo, peft, unsloth, axolotl, kaggle, colab, gguf, quantization, training]
+description: All-in-one skill for training and fine-tuning LLMs (Llama, Qwen, Mistral, Gemma, Phi, DeepSeek, Yi, Nemotron) from scratch or via PEFT on Kaggle, Colab, local, or cloud GPUs. 2026 edition with GRPO/DAPO, multimodal, FP8/NVFP4, Apple Silicon MLX.
+tags: [llm, fine-tuning, lora, qlora, sft, dpo, grpo, dapo, simpo, cpo, orpo, kto, peft, unsloth, axolotl, llama-factory, torchtune, trl, mlx, kaggle, colab, gguf, awq, gptq, exl2, fp8, nvfp4, quantization, training, multimodal]
 ---
 
-# LLM Training and Fine-Tuning: Comprehensive Guide & Playbook
+# LLM Training and Fine-Tuning: Comprehensive Guide & Playbook (2026 Edition)
 
 ## Overview
 
-This skill enables you to train, fine-tune, and export any open-source LLM on any hardware — from a free Kaggle T4 to multi-GPU cloud clusters. It covers model families (Llama, Qwen, Mistral, Gemma, Phi), training methods (SFT, DPO, KTO, ORPO, PPO, GRPO), PEFT techniques (LoRA, QLoRA, DoRA, VeRA), frameworks (Unsloth, Axolotl, LLaMA-Factory, TRL, TorchTune), and export formats (GGUF, AWQ, GPTQ).
+This skill enables you to train, fine-tune, and export any open-source LLM on any hardware — from a free Kaggle T4 to multi-GPU cloud clusters (H100/H200/B200) and Apple Silicon (M4 Max/Ultra). It covers **45+ model families** (Llama 3.1/3.2/3.3, Qwen 2.5/3/3.5, DeepSeek V2/V3/R1, Gemma 2/3, Phi 3/3.5/4, Nemotron, Yi, GLM, LFM2), **14 training methods** (SFT, DPO, KTO, ORPO, PPO, GRPO, DAPO, SimPO, CPO, multimodal SFT/DPO, continued pretraining, reward modeling), **10 PEFT techniques** (LoRA, QLoRA, DoRA, VeRA, LoHa, LoKr, OFT, AdaLoRA, IA3), **8 frameworks** (Unsloth, Axolotl, LLaMA-Factory, TRL, TorchTune, Raw Transformers, MLX-Tune), and **10 export formats** (GGUF, AWQ, GPTQ, EXL2, EXL3, FP8, NVFP4, MXFP4, HF safetensors, ONNX, TensorRT-LLM).
 
 **When to use this skill:**
 - User wants to fine-tune or train an LLM
@@ -28,67 +28,61 @@ Three steps from request to training run:
 ### Step 1: Specify
 
 Identify the user's requirements. Collect:
-- **Model**: Which model family and size? (e.g., `meta-llama/Llama-3.1-8B-Instruct`)
-- **Dataset**: What data? What format? (ShareGPT, Alpaca, OpenAI, custom)
-- **Method**: SFT, DPO, KTO, ORPO, GRPO, reward modeling?
-- **Hardware**: GPU type, count, platform (Colab/Kaggle/local/cloud)
-- **Goal**: What should the model learn? (domain adaptation, instruction following, alignment)
+- **Model**: Which model family and size? (e.g., `meta-llama/Llama-3.1-8B-Instruct`, `Qwen/Qwen3-8B`, `deepseek-ai/DeepSeek-R1-Distill-Qwen-7B`)
+- **Dataset**: What data? What format? (ShareGPT, Alpaca, OpenAI, custom, multimodal)
+- **Method**: SFT, DPO, KTO, ORPO, GRPO, DAPO, SimPO, CPO, multimodal SFT/DPO, continued pretraining?
+- **Hardware**: GPU type, count, platform (Colab/Kaggle/local/cloud/Apple Silicon)
+- **Goal**: What should the model learn? (domain adaptation, instruction following, alignment, reasoning, vision/audio)
 
 ### Step 2: Plan
 
 Use the config files and scripts to build a training plan:
-1. Check `config/hardware-profiles.yaml` for GPU limits
+1. Check `config/hardware-profiles.yaml` for GPU limits (now includes RTX 5090, H200, B200, MI325X, M4 Max/Ultra)
 2. Run `scripts/estimate_vram.py` to validate VRAM feasibility
-3. Select framework from the comparison table below
+3. Select framework from the updated comparison table below
 4. Choose PEFT method based on VRAM and model size
 5. Set hyperparameters per the training method reference
 
 ```bash
 # Example: Check if Llama-3.1-8B + QLoRA fits on T4
 python scripts/estimate_vram.py --params-b 8 --seq-len 4096 --batch-size 2 --quantize 4bit
+
+# Example: Check Qwen3-30B-A3B MoE on RTX 4090
+python scripts/estimate_vram.py --params-b 30 --seq-len 8192 --batch-size 1 --quantize 4bit --moe-active 3
 ```
 
 ### Step 3: Execute
 
-1. Prepare dataset with `scripts/prepare_dataset.py`
+1. Prepare dataset with `scripts/prepare_dataset.py` (supports multimodal formats)
 2. Generate framework-specific config from templates
-3. Launch training
-4. Monitor via W&B/TensorBoard
-5. Export with merge + quantization pipeline
+3. Launch training (use `scripts/launch_training.py` for auto platform detection)
+4. Monitor via W&B/TensorBoard/MLflow
+5. Export with merge + quantization pipeline (`scripts/convert_to_*.py` for GGUF, AWQ, GPTQ, EXL2, FP8, NVFP4)
 
 ---
 
 ## Framework Selection Guide
 
-### Comparison Table
+### Comparison Table (2026 Edition)
 
 | Framework | Speed | VRAM Efficiency | Multi-GPU | Config-Driven | Best For |
 |-----------|-------|----------------|-----------|---------------|----------|
-| **Unsloth** | 2-5x faster | 70% less VRAM | DDP/FSDP (Pro) | Python scripts | Single-GPU, free tiers |
-| **Axolotl** | Fast | Good | FSDP/DeepSpeed native | YAML only | Multi-GPU, reproducibility |
-| **LLaMA-Factory** | Fast | Good | DeepSpeed | YAML + WebUI | Beginners, quick experiments |
-| **TRL** | Baseline | Baseline | FSDP/Accelerate | Python scripts | Custom RL, research |
-| **TorchTune** | Baseline | Baseline | FSDP | YAML | PyTorch purity |
-| **Raw Transformers** | Baseline | Baseline | Manual | Python scripts | Maximum control |
+| **Unsloth** | 2-5x faster | 70% less VRAM | DDP/FSDP2 (Pro) | Python scripts | Single-GPU, free tiers, multimodal, GRPO/DAPO |
+| **Axolotl** | Fast | Good | FSDP2/DeepSpeed native | YAML only | Multi-GPU, reproducibility, complex configs |
+| **LLaMA-Factory** | Fast | Good | DeepSpeed | YAML + WebUI | Beginners, quick experiments, broad model support |
+| **TRL** | Baseline | Baseline | FSDP2/Accelerate | Python scripts | Custom RL, research, novel alignment algorithms |
+| **TorchTune** | Baseline | Baseline | FSDP2 | YAML | PyTorch purity, composable components |
+| **Raw Transformers** | Baseline | Baseline | Manual | Python scripts | Maximum control, unusual architectures |
+| **MLX-Tune** | Native M-series | Unified memory | Native (Apple) | Python scripts | Apple Silicon (M1/M2/M3/M4), local-first |
 
-### Framework Details
+### 2026 Framework Landscape Notes
 
-#### Unsloth (Primary Recommendation)
-
-Best for: Free tiers (Colab/Kaggle), single-GPU training, fastest iteration.
-
-```bash
-pip install unsloth
-# Or for latest
-pip install "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git"
-```
-
-Key advantages:
-- 2-5x faster training, 70% less VRAM via custom Triton kernels
-- Drop-in replacement for HuggingFace classes
-- Supports SFT, DPO, ORPO, GRPO, continued pretraining
-- Automatic gradient checkpointing, Flash Attention integration
-- Free tier friendly — fits 7B QLoRA on T4 with 4096 context
+- **Unsloth** remains the single-GPU speed king with 2026.7.1 adding DeepSeek-V4, GRPO/DAPO, multimodal (Qwen2-VL, Llama-3.2-Vision, Pixtral), FP8/NVFP4 export, and MoE training up to 3-5x faster
+- **Axolotl 0.6+** adds FSDP2 (significantly faster than FSDP1), native multimodal configs, GRPO/DAPO/SimPO/CPO support
+- **LLaMA-Factory 0.9+** adds WebUI for multimodal, Qwen2.5-VL, Pixtral, GRPO via TRL backend
+- **TRL 0.16+** adds GRPOTrainer, DPOTrainer with SimPO/CPO/ORPO/KTO losses, RewardTrainer, multimodal SFT
+- **TorchTune 0.5+** adds DPO/GRPO configs, FSDP2, `torch.compile` support, composable losses
+- **MLX-Tune** (new) provides Unsloth-compatible API on Apple Silicon with SFT/DPO/GRPO, GGUF export
 
 ```python
 from unsloth import FastLanguageModel
@@ -429,41 +423,130 @@ model.save_pretrained("outputs/adapter")
 
 ## Model Family Reference
 
-### Llama 2/3/3.1/3.2
+### Llama 2 / 3 / 3.1 / 3.2 / 3.3
 
 ```yaml
-# config/model-templates.yaml entry
+# config/model-templates.yaml entries
 llama3:
-  name_or_path: "meta-llama/Meta-Llama-3-8B"
+  name_or_path: "meta-llama/Meta-Llama-3-8B-Instruct"
   target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
   chat_template: "llama3"
+  trust_remote_code: false
+  rope_scaling: true
+  max_context: 8192
+
+llama3.1:
+  name_or_path: "meta-llama/Llama-3.1-8B-Instruct"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "llama3"
+  trust_remote_code: false
+  rope_scaling: true
+  max_context: 131072
+
+llama3.2:
+  name_or_path: "meta-llama/Llama-3.2-3B-Instruct"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "llama3"
+  trust_remote_code: false
+  rope_scaling: true
+  max_context: 131072
+
+llama3.3:
+  name_or_path: "meta-llama/Llama-3.3-70B-Instruct"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "llama3"
+  trust_remote_code: false
+  rope_scaling: true
+  max_context: 131072
+
+llama2:
+  name_or_path: "meta-llama/Llama-2-7b-hf"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "llama2"
+  trust_remote_code: false
+  rope_scaling: false
+  max_context: 4096
 ```
 
 **Llama 2 (7B/13B/70B):**
-- Chat template: [INST] <</SYS>>{system}<</SYS>>{user} [/INST] {assistant}
+- Chat template: `<<SYS>>{system}<</SYS>>{user} {assistant}`
 - trust_remote_code: false
 - Uses GQA (grouped query attention) in 70B
 - RoPE scaling not needed for standard context lengths
 - 7B: 14GB fp16, ~4GB 4-bit QLoRA
 
-**Llama 3/3.1 (8B/70B/405B):**
+**Llama 3 / 3.1 (8B/70B/405B):**
 - 128K context window (3.1) -- use RoPE scaling for >8K
 - tokenizer.chat_template is auto-loaded -- prefer the tokenizer built-in template
 - 8B model: 4.5GB in fp16, ~1GB in 4-bit QLoRA
+- 405B: requires multi-node (B200/H100), supports FP8 training
 
 **Llama 3.2 (1B/3B/90B-Vision):**
 - Small models (1B/3B) -- ideal for edge deployment
-- Vision variant: use LlavaForCausalLM for VLM fine-tuning
+- Vision variant: use Llama4ForConditionalGeneration for VLM fine-tuning
 - Same chat template as Llama 3.1
 - 1B fits easily on T4 even with full fine-tuning
 
-### Qwen 1.5/2/2.5/3
+**Llama 3.3 (70B):**
+- Latest instruction-tuned, improved quality over 3.1
+- 128K context, same architecture as 3.1
+
+### Qwen 1.5 / 2 / 2.5 / 3 / 3.5
 
 ```yaml
 qwen2.5:
   name_or_path: "Qwen/Qwen2.5-7B-Instruct"
   target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
   chat_template: "qwen"
+  trust_remote_code: true
+  rope_scaling: true
+  max_context: 131072
+
+qwen3:
+  name_or_path: "Qwen/Qwen3-8B"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "qwen3"
+  trust_remote_code: true
+  rope_scaling: true
+  max_context: 131072
+
+qwen3_moe:
+  name_or_path: "Qwen/Qwen3-30B-A3B"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "qwen3"
+  trust_remote_code: true
+  rope_scaling: true
+  max_context: 131072
+  is_moe: true
+  num_experts: 128
+  active_experts: 8
+
+qwen2.5_vl:
+  name_or_path: "Qwen/Qwen2.5-VL-7B-Instruct"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "qwen2_vl"
+  trust_remote_code: true
+  rope_scaling: true
+  max_context: 131072
+  is_multimodal: true
+
+qwen2.5_coder:
+  name_or_path: "Qwen/Qwen2.5-Coder-7B-Instruct"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "qwen"
+  trust_remote_code: true
+  rope_scaling: true
+  max_context: 131072
+
+qwen2_audio:
+  name_or_path: "Qwen/Qwen2-Audio-7B-Instruct"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "qwen2_audio"
+  trust_remote_code: true
+  rope_scaling: true
+  max_context: 131072
+  is_multimodal: true
+  modalities: ["audio"]
 ```
 
 **Qwen 1.5/2 (7B/14B/72B):**
@@ -471,24 +554,68 @@ qwen2.5:
 - Qwen2 uses GQA -- 7B has 28 layers, 70B has 80 layers
 - Supports very long context (32K-128K)
 
-**Qwen 2.5 (3B/7B/14B/32B/72B):**
+**Qwen 2.5 (3B/7B/14B/32B/72B + Coder/Math variants):**
 - Improved coding and math capabilities
 - 32B is a sweet spot for quality vs cost
 - 3B model: excellent for edge deployment
+- Coder variant: specialized for code generation
+- Math variant: specialized for mathematical reasoning
 
-**Qwen 3 (0.6B-235B):**
-- Latest generation with thinking mode
+**Qwen 2.5-VL (7B/72B):**
+- Vision-language model with native image understanding
+- Requires vision encoder freezing strategy
+- Chat template: qwen2_vl with image tokens
+
+**Qwen 3 (0.6B-235B MoE):**
+- Latest generation with thinking mode (reasoning toggle)
 - Supports hybrid thinking (reason + non-reason)
 - Requires Qwen3-specific tokenizer handling
 - 0.6B fits on any GPU, 235B needs multi-node
 
-### Mistral/Mixtral
+**Qwen 3 MoE (30B-A3B, 235B-A22B):**
+- Sparse mixture of experts
+- 30B-A3B: 30B total, 3B active -- fits on 24GB VRAM with QLoRA
+- 235B-A22B: massive MoE for high-end clusters
+
+### Mistral / Mixtral / Pixtral
 
 ```yaml
 mistral:
-  name_or_path: "mistralai/Mistral-7B-v0.1"
+  name_or_path: "mistralai/Mistral-7B-v0.3"
   target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
   chat_template: "mistral"
+  trust_remote_code: false
+  rope_scaling: true
+  max_context: 32768
+
+mistral_nemo:
+  name_or_path: "mistralai/Mistral-Nemo-Base-2407"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "mistral"
+  trust_remote_code: false
+  rope_scaling: true
+  max_context: 131072
+
+mixtral:
+  name_or_path: "mistralai/Mixtral-8x7B-v0.1"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "mistral"
+  trust_remote_code: true
+  rope_scaling: false
+  max_context: 32768
+  is_moe: true
+  num_experts: 8
+  active_experts: 2
+
+pixtral:
+  name_or_path: "mistralai/Pixtral-12B-2409"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "pixtral"
+  trust_remote_code: false
+  rope_scaling: true
+  max_context: 131072
+  is_multimodal: true
+  modalities: ["image"]
 ```
 
 **Mistral 7B (v0.1/v0.2/v0.3):**
@@ -497,20 +624,57 @@ mistral:
 - Sliding window is not applied during fine-tuning
 - 7B: 14GB fp16, ~4GB 4-bit QLoRA
 
+**Mistral-Nemo (12B):**
+- 128K context, Apache 2.0 license
+- Stronger base model than 7B, good alternative to Llama 3.1 8B
+
 **Mixtral 8x7B / 8x22B:**
 - Sparse mixture of experts -- 8 experts, 2 active per token
 - 8x7B: 46.7B total params but only ~12.9B active
+- 8x22B: 141B total, ~39B active
 - Requires trust_remote_code: true
 - VRAM: 8x7B needs ~26GB in 4-bit, 8x22B needs ~65GB in 4-bit
-- Do NOT use standard LoRA target_modules -- use all MLP experts
+- Do NOT use standard LoRA target_modules -- use all MLP experts (gate_proj/up_proj/down_proj for each expert)
 
-### Gemma 1/2/3
+**Pixtral (12B):**
+- Mistral's first vision model, Apache 2.0
+- Native image understanding, strong OCR
+- 128K context, supports multi-image
+
+### Gemma 1 / 2 / 3
 
 ```yaml
-gemma2:
-  name_or_path: "google/gemma-2-9b"
+gemma1:
+  name_or_path: "google/gemma-7b-it"
   target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
   chat_template: "gemma"
+  trust_remote_code: false
+  rope_scaling: false
+  max_context: 8192
+
+gemma2:
+  name_or_path: "google/gemma-2-9b-it"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "gemma"
+  trust_remote_code: false
+  rope_scaling: false
+  max_context: 8192
+
+gemma2_27b:
+  name_or_path: "google/gemma-2-27b-it"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "gemma"
+  trust_remote_code: false
+  rope_scaling: false
+  max_context: 8192
+
+gemma3:
+  name_or_path: "google/gemma-3-12b-it"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "gemma3"
+  trust_remote_code: false
+  rope_scaling: false
+  max_context: 131072
 ```
 
 **Gemma 1 (2B/7B):**
@@ -522,20 +686,67 @@ gemma2:
 - Improved architecture with sliding window + global attention alternating
 - 9B: 18GB fp16, ~5GB 4-bit QLoRA
 - 9B is a strong mid-range option
+- 27B: competitive with Llama 3.1 8B, needs ~14GB QLoRA
 
 **Gemma 3 (1B/4B/12B/27B):**
 - Latest generation with multilingual improvements
 - 4B: great for edge deployment
 - 12B: sweet spot for quality/efficiency
-- Supports vision in 12B/27B variants
+- Supports vision in 12B/27B variants (SigLIP encoder)
 
-### Phi 2/3/3.5
+### Phi 2 / 3 / 3.5 / 4
 
 ```yaml
+phi2:
+  name_or_path: "microsoft/phi-2"
+  target_modules: ["qkv_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "phi2"
+  trust_remote_code: false
+  rope_scaling: false
+  max_context: 2048
+
 phi3:
   name_or_path: "microsoft/Phi-3-mini-4k-instruct"
   target_modules: ["qkv_proj", "gate_proj", "up_proj", "down_proj"]
   chat_template: "phi3"
+  trust_remote_code: false
+  rope_scaling: false
+  max_context: 4096
+
+phi3.5:
+  name_or_path: "microsoft/Phi-3.5-mini-instruct"
+  target_modules: ["qkv_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "phi3"
+  trust_remote_code: false
+  rope_scaling: false
+  max_context: 131072
+
+phi3_medium:
+  name_or_path: "microsoft/Phi-3-medium-4k-instruct"
+  target_modules: ["qkv_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "phi3"
+  trust_remote_code: false
+  rope_scaling: false
+  max_context: 4096
+
+phi3.5_moe:
+  name_or_path: "microsoft/Phi-3.5-MoE-instruct"
+  target_modules: ["qkv_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "phi3"
+  trust_remote_code: false
+  rope_scaling: false
+  max_context: 131072
+  is_moe: true
+  num_experts: 16
+  active_experts: 2
+
+phi4:
+  name_or_path: "microsoft/Phi-4-mini-instruct"
+  target_modules: ["qkv_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "phi4"
+  trust_remote_code: false
+  rope_scaling: true
+  max_context: 131072
 ```
 
 **Phi-2 (2.7B):**
@@ -551,85 +762,167 @@ phi3:
 **Phi-3.5 (3.8B/7B/14B/MoE):**
 - MoE variant: 42B total, 6.6B active
 - Enhanced reasoning and multilingual
+- 128K context
 
-### DeepSeek
+**Phi-4 (3.8B):**
+- Latest, improved reasoning
+- 128K context, rope scaling
+- Stronger than Phi-3.5 at similar size
+
+### DeepSeek V2 / V3 / R1
 
 ```yaml
-deepseek-v2:
+deepseek_v2:
   name_or_path: "deepseek-ai/DeepSeek-V2-Lite"
   target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
   chat_template: "deepseek"
+  trust_remote_code: true
+  rope_scaling: false
+  max_context: 128000
+  is_moe: true
+  num_experts: 160
+  active_experts: 6
+  is_mla: true
+
+deepseek_v3:
+  name_or_path: "deepseek-ai/DeepSeek-V3"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "deepseek"
+  trust_remote_code: true
+  rope_scaling: false
+  max_context: 131072
+  is_moe: true
+  num_experts: 256
+  active_experts: 8
+  is_mla: true
+
+deepseek_r1:
+  name_or_path: "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "deepseek"
+  trust_remote_code: true
+  rope_scaling: true
+  max_context: 131072
+  is_reasoning: true
+
+deepseek_r1_qwen32b:
+  name_or_path: "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "deepseek"
+  trust_remote_code: true
+  rope_scaling: true
+  max_context: 131072
+  is_reasoning: true
+
+deepseek_r1_llama70b:
+  name_or_path: "deepseek-ai/DeepSeek-R1-Distill-Llama-70B"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "llama3"
+  trust_remote_code: true
+  rope_scaling: true
+  max_context: 131072
+  is_reasoning: true
 ```
 
-- DeepSeek-V2 uses Multi-head Latent Attention (MLA)
-- 16B dense model in V2-Lite, 236B MoE in full V2
-- trust_remote_code: true required
-- For MoE variants, target all expert parameters
+- **DeepSeek-V2**: Uses Multi-head Latent Attention (MLA) -- compressed KV cache
+- **V2-Lite**: 16B dense, 236B MoE in full V2 (160 experts, 6 active)
+- **DeepSeek-V3**: 671B total, 37B active (256 experts, 8 active) -- SOTA open model
+- **DeepSeek-R1**: Reasoning model via GRPO training
+- **R1 Distills**: Qwen/Llama variants distilled from R1 -- retain reasoning
+- trust_remote_code: true required for all
+- For MoE variants, target all expert parameters in MLP
 
-### Yi
+### Yi / Nemotron / GLM / InternLM / LFM2 / Others
 
 ```yaml
-yi:
-  name_or_path: "01-ai/Yi-1.5-9B-Chat-16K"
+yi2:
+  name_or_path: "01-ai/Yi-2-6B-Chat"
   target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
   chat_template: "yi"
-```
+  trust_remote_code: true
+  rope_scaling: true
+  max_context: 131072
 
-**Yi-1.5 (6B/9B/34B):**
-- 9B: strong multilingual model, 16K context
-- trust_remote_code: false
-- Uses standard Llama-like architecture
-- 9B: 18GB fp16, ~5GB 4-bit QLoRA
+nemotron3:
+  name_or_path: "nvidia/Nemotron-3-Ultra"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "nemotron"
+  trust_remote_code: false
+  rope_scaling: true
+  max_context: 131072
 
-### Baichuan
+glm4:
+  name_or_path: "ZhipuAI/GLM-4-9B-Chat"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "glm4"
+  trust_remote_code: true
+  rope_scaling: true
+  max_context: 131072
 
-```yaml
-baichuan:
-  name_or_path: "baichuan-inc/Baichuan2-13B-Chat"
-  target_modules: ["W_pack", "gate_proj", "up_proj", "down_proj"]
-  chat_template: "baichuan"
-```
-
-**Baichuan 2 (7B/13B):**
-- trust_remote_code: true (required)
-- Uses fused W_pack projection (no separate q/k/v)
-- 13B: 26GB fp16, ~7GB 4-bit QLoRA
-- Strong Chinese language support
-
-### InternLM
-
-```yaml
-internlm:
+internlm2.5:
   name_or_path: "internlm/internlm2_5-7b-chat"
   target_modules: ["qkv_proj", "gate_proj", "up_proj", "down_proj"]
   chat_template: "internlm"
-```
+  trust_remote_code: false
+  rope_scaling: false
+  max_context: 32768
 
-**InternLM 2.5 (7B/20B):**
-- 7B: solid general-purpose model
-- 20B: competitive with larger models
-- trust_remote_code: false
-- Uses fused QKV projection
-- 7B: 14GB fp16, ~4GB 4-bit QLoRA
+lfm2:
+  name_or_path: "LiquidAI/LFM2-1.2B"
+  target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "lfm2"
+  trust_remote_code: true
+  rope_scaling: false
+  max_context: 32768
+  is_hybrid: true
 
-### StableLM
+baichuan2:
+  name_or_path: "baichuan-inc/Baichuan2-13B-Chat"
+  target_modules: ["W_pack", "gate_proj", "up_proj", "down_proj"]
+  chat_template: "baichuan"
+  trust_remote_code: true
+  rope_scaling: false
+  max_context: 16384
 
-```yaml
 stablelm:
   name_or_path: "stabilityai/stablelm-3b-4e1t"
   target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
   chat_template: "stablelm"
+  trust_remote_code: false
+  rope_scaling: false
+  max_context: 4096
 ```
+
+**Yi-2 (6B/9B/34B):**
+- 9B: strong multilingual model, 128K context
+- 34B: competitive with Llama 3.1 70B
+
+**Nemotron 3 Ultra (70B):**
+- NVIDIA's high-quality model
+- 128K context, strong instruction following
+
+**GLM-4 (9B):**
+- ZhipuAI's bilingual model
+- Strong Chinese/English capabilities
+
+**InternLM 2.5 (7B/20B):**
+- 7B: solid general-purpose
+- 20B: competitive with larger models
+- Uses fused QKV projection
+
+**LFM2 (1.2B-24B):**
+- Liquid AI's hybrid architecture (conv + GQA)
+- "Thinking" mode support
+- Non-transformer, efficient long context
+
+**Baichuan2 (7B/13B):**
+- trust_remote_code: true required
+- Uses fused W_pack projection (no separate q/k/v)
+- Strong Chinese language support
 
 **StableLM (3B/7B):**
 - 3B: lightweight, good for edge deployment
 - 7B: standard mid-range option
-- trust_remote_code: false
-- 3B: 6GB fp16, ~2GB 4-bit QLoRA
-- 7B: 14GB fp16, ~4GB 4-bit QLoRA
-
-
----
 
 ## Training Method Reference
 
@@ -862,6 +1155,68 @@ trainer = GRPOTrainer(
 trainer.train()
 ```
 
+### DAPO (Decoupled Advantage Policy Optimization)
+
+Improved GRPO with length normalization and decoupled clipping.
+
+**When to use:** When GRPO overfits or length bias is an issue. More stable for long completions.
+
+**Key hyperparameters:**
+- learning_rate: 1e-6
+- num_generations: 8
+- max_completion_length: 1024
+- beta: 0.01 (lower than GRPO)
+- clip_ratio: 0.2
+- clip_ratio_c: 3.0 (DAPO clip ratio)
+
+```python
+# TRL DAPO (via GRPOTrainer with DAPO config)
+from trl import GRPOTrainer, GRPOConfig
+
+def reward_format(completions, **kwargs):
+    rewards = []
+    for c in completions:
+        if "
+```" in c:
+            rewards.append(1.0)
+        else:
+            rewards.append(0.0)
+    return rewards
+
+def reward_length(completions, **kwargs):
+    rewards = []
+    for c in completions:
+        length = len(c.split())
+        if 100 <= length <= 800:
+            rewards.append(1.0)
+        elif 50 <= length < 100 or 800 < length <= 1200:
+            rewards.append(0.5)
+        else:
+            rewards.append(0.1)
+    return rewards
+
+training_args = GRPOConfig(
+    output_dir="dapo_output",
+    per_device_train_batch_size=4,
+    num_generations=8,
+    max_completion_length=1024,
+    learning_rate=1e-6,
+    beta=0.01,
+    temperature=0.7,
+    epsilon=0.2,
+    epsilon_high=0.28,
+    clip_ratio_c=3.0,  # DAPO specific
+)
+
+trainer = GRPOTrainer(
+    model=model,
+    tokenizer=tokenizer,
+    train_dataset=dataset,
+    reward_funcs=[reward_format, reward_length, reward_correctness],
+    args=training_args,
+)
+```
+
 ### CPO (Contrastive Preference Optimization)
 
 Single-stage alignment like ORPO but with contrastive loss.
@@ -896,9 +1251,135 @@ Train a reward model from preference data for use with PPO.
 - max_length: 1024
 - batch_size: 32-64
 
+### Continued Pretraining
 
----
+Continued pretraining on raw text corpora (domain adaptation).
 
+**When to use:** Inject new knowledge into model, adapt to new domain/language.
+
+**Key hyperparameters:**
+- learning_rate: 1e-4 (LoRA) / 1e-5 (full)
+- num_epochs: 1
+- max_seq_length: 8192
+- packing: true
+- warmup_ratio: 0.05
+
+### Multimodal SFT
+
+Multimodal SFT for vision/audio models (Qwen2-VL, Llama-3.2-Vision, Pixtral, Qwen2-Audio).
+
+**When to use:** Fine-tune vision/audio-language models on custom data.
+
+**Key hyperparameters:**
+- learning_rate: 2e-4 (LoRA) / 2e-4 (QLoRA)
+- num_epochs: 3
+- max_seq_length: 8192
+- freeze_vision_encoder: true
+- freeze_audio_encoder: true
+
+```python
+# Unsloth Multimodal SFT
+from unsloth import FastVisionModel
+from trl import SFTTrainer
+
+model, tokenizer = FastVisionModel.from_pretrained(
+    model_name="unsloth/Qwen2-VL-7B-Instruct-bnb-4bit",
+    load_in_4bit=True,
+    use_gradient_checkpointing="unsloth",
+)
+
+model = FastVisionModel.get_peft_model(
+    model,
+    finetune_vision_layers=True,
+    finetune_language_layers=True,
+    finetune_attention_modules=True,
+    finetune_mlp_modules=True,
+    r=16,
+    lora_alpha=16,
+    lora_dropout=0,
+    bias="none",
+    random_state=3407,
+)
+
+trainer = SFTTrainer(
+    model=model,
+    tokenizer=tokenizer,
+    train_dataset=dataset,
+    data_collator=FastVisionModel.data_collator,
+    args=TrainingArguments(
+        output_dir="vlm_sft_output",
+        per_device_train_batch_size=2,
+        gradient_accumulation_steps=4,
+        warmup_steps=5,
+        max_steps=100,
+        learning_rate=2e-4,
+        fp16=not torch.cuda.is_bf16_supported(),
+        bf16=torch.cuda.is_bf16_supported(),
+        logging_steps=5,
+        optim="adamw_8bit",
+        weight_decay=0.01,
+        lr_scheduler_type="cosine",
+        seed=3407,
+        report_to="none",
+        remove_unused_columns=False,
+    ),
+)
+
+trainer.train()
+```
+
+### Multimodal DPO
+
+Multimodal DPO for vision/audio alignment.
+
+**When to use:** Align multimodal model with human preferences on image/audio tasks.
+
+**Key hyperparameters:**
+- learning_rate: 5e-7
+- num_epochs: 1
+- beta: 0.1
+- freeze_vision_encoder: true
+
+### MLX SFT/DPO/GRPO (Apple Silicon)
+
+Native MLX training on Apple Silicon (M1/M2/M3/M4).
+
+**When to use:** Local training on MacBook Pro/Mac Studio with unified memory.
+
+```python
+from mlx_tune import FastLanguageModel, SFTTrainer, SFTConfig
+
+model, tokenizer = FastLanguageModel.from_pretrained(
+    model_name="mlx-community/Qwen2.5-7B-Instruct-4bit",
+    max_seq_length=4096,
+    load_in_4bit=True,
+)
+
+model = FastLanguageModel.get_peft_model(
+    model,
+    r=16,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+    lora_alpha=16,
+)
+
+trainer = SFTTrainer(
+    model=model,
+    train_dataset=dataset,
+    tokenizer=tokenizer,
+    args=SFTConfig(
+        output_dir="outputs",
+        per_device_train_batch_size=2,
+        learning_rate=2e-4,
+        max_steps=100,
+    ),
+)
+trainer.train()
+
+# Save (same API as Unsloth!)
+model.save_pretrained("lora_model")
+model.save_pretrained_merged("merged", tokenizer)
+model.save_pretrained_gguf("model", tokenizer)
+```
 ## PEFT Methods Deep Dive
 
 ### LoRA (Low-Rank Adaptation)
@@ -1048,6 +1529,65 @@ Very lightweight adaptation. Multiplies activations by learned vectors.
 - target_modules: ["k_proj", "v_proj", "gate_proj"]
 - Very fast training
 
+### RSLoRA (Rank-Stabilized LoRA)
+
+Stabilizes LoRA training by scaling the learning rate with 1/sqrt(r) instead of alpha/r.
+
+**When to use:** More stable training across different ranks, better generalization.
+
+```python
+from peft import LoraConfig
+
+lora_config = LoraConfig(
+    r=16,
+    lora_alpha=16,  # alpha = r for RSLoRA
+    lora_dropout=0.05,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                     "gate_proj", "up_proj", "down_proj"],
+    use_rslora=True,  # Enable RSLoRA
+    task_type="CAUSAL_LM",
+)
+```
+
+### PiSSA (Principal Singular values and Singular vectors Adaptation)
+
+Initializes LoRA with principal components of the pretrained weights. Faster convergence.
+
+**When to use:** When standard LoRA convergence is slow. Better initialization = faster training.
+
+```python
+from peft import LoraConfig
+
+lora_config = LoraConfig(
+    r=16,
+    lora_alpha=32,
+    lora_dropout=0.05,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                     "gate_proj", "up_proj", "down_proj"],
+    init_lora_weights="pissa",  # Enable PiSSA
+    task_type="CAUSAL_LM",
+)
+```
+
+### LoRA-GA / LoftQ (LoRA Gradient Approximation / LoRA-Free Quantization)
+
+Better initialization for LoRA using gradient information or quantization-aware decomposition.
+
+**When to use:** When standard LoRA convergence is slow. Better initialization = faster convergence.
+
+```python
+from peft import LoraConfig, LoraModel
+
+lora_config = LoraConfig(
+    r=16,
+    lora_alpha=32,
+    lora_dropout=0.05,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                     "gate_proj", "up_proj", "down_proj"],
+    init_lora_weights="loftq",  # Uses LoRA-GA initialization
+    task_type="CAUSAL_LM",
+)
+```
 
 ---
 
@@ -1249,6 +1789,99 @@ ssh root@<instance-ip> -p <port>
 - Inconsistent availability, quality varies
 - Good for non-critical training, experimentation
 
+### Apple Silicon (M1/M2/M3/M4) — MLX Native
+
+**Requirements:**
+- MacBook Pro/Air with M1/M2/M3/M4 chip
+- macOS 14+ (Sonoma) for best MLX support
+- Unified memory: 16GB+ recommended (32GB+ for 7B+ models)
+
+**Step-by-step setup:**
+
+```bash
+# Create virtual environment
+python3 -m venv mlx-env
+source mlx-env/bin/activate
+
+# Install MLX and MLX-Tune
+pip install mlx mlx-lm mlx-tune
+
+# Or install from source for latest
+pip install git+https://github.com/ml-explore/mlx.git
+pip install git+https://github.com/ARahim3/mlx-tune.git
+
+# Optional: audio support for TTS/STT fine-tuning
+pip install 'mlx-tune[audio]'
+brew install ffmpeg  # system dependency for audio codecs
+```
+
+**Verify installation:**
+```bash
+python -c "import mlx; import mlx_tune; print('MLX:', mlx.__version__); print('MLX-Tune OK')"
+```
+
+**Quick start SFT on M4 Max (48GB unified):**
+```python
+from mlx_tune import FastLanguageModel, SFTTrainer, SFTConfig
+from datasets import load_dataset
+
+model, tokenizer = FastLanguageModel.from_pretrained(
+    model_name="mlx-community/Qwen2.5-7B-Instruct-4bit",
+    max_seq_length=4096,
+    load_in_4bit=True,
+)
+
+model = FastLanguageModel.get_peft_model(
+    model,
+    r=16,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+    lora_alpha=16,
+)
+
+dataset = load_dataset("yahma/alpaca-cleaned", split="train[:2000]")
+
+def format_alpaca(example):
+    return {"conversations": [
+        {"role": "user", "content": example["instruction"] + "\n" + example["input"]},
+        {"role": "assistant", "content": example["output"]}
+    ]}
+
+dataset = dataset.map(format_alpaca, remove_columns=dataset.column_names)
+
+trainer = SFTTrainer(
+    model=model,
+    train_dataset=dataset,
+    tokenizer=tokenizer,
+    args=SFTConfig(
+        output_dir="sft_output",
+        per_device_train_batch_size=2,
+        learning_rate=2e-4,
+        max_steps=100,
+        max_seq_length=2048,
+        packing=True,
+    ),
+)
+
+trainer.train()
+
+# Save (same API as Unsloth!)
+model.save_pretrained("sft_lora")  # Adapters only
+model.save_pretrained_merged("sft_merged", tokenizer)  # Full model (16-bit)
+model.save_pretrained_gguf("sft_gguf", tokenizer)  # GGUF for llama.cpp
+```
+
+**MLX Training Methods Supported:**
+- SFT (Supervised Fine-Tuning)
+- DPO (Direct Preference Optimization)
+- GRPO (Group Relative Policy Optimization)
+- Continued Pretraining
+
+**Key Advantages:**
+- Native Metal acceleration, no CUDA needed
+- Unified memory = no VRAM/RAM split, 48GB+ models on M4 Max
+- mlx-tune API mirrors Unsloth for easy cross-platform code
+- GGUF export works directly on Mac
+
 ---
 
 ## Dataset Preparation
@@ -1338,6 +1971,50 @@ For tool/function calling fine-tuning, include tool definitions and structured o
 }
 ```
 
+### Multimodal Datasets (2026)
+
+For vision/audio-language model fine-tuning (Qwen2-VL, Llama-3.2-Vision, Pixtral, Qwen2-Audio):
+
+**Vision-Language (ShareGPT + images):**
+```json
+{
+  "conversations": [
+    {"from": "human", "value": "<image>\nWhat is in this image?"},
+    {"from": "gpt", "value": "This image shows a cat sitting on a windowsill..."}
+  ],
+  "images": ["path/to/image.jpg"]
+}
+```
+
+**Audio-Language:**
+```json
+{
+  "conversations": [
+    {"from": "human", "value": "<audio>\nTranscribe this audio."},
+    {"from": "gpt", "value": "The speaker says: Hello world..."}
+  ],
+  "audios": ["path/to/audio.wav"]
+}
+```
+
+**Video-Language:**
+```json
+{
+  "conversations": [
+    {"from": "human", "value": "<video>\nDescribe what happens in this video."},
+    {"from": "gpt", "value": "The video shows a person cooking..."}
+  ],
+  "videos": ["path/to/video.mp4"]
+}
+```
+
+**Key multimodal considerations:**
+- Use `scripts/prepare_dataset.py --format multimodal` for conversion
+- Image token IDs vary by model (Qwen2-VL: 151655, Llama-3.2-Vision: 128256)
+- Freeze vision/audio encoders during LoRA training (`freeze_vision_encoder: true`)
+- Max sequence length: 8192-131072 for multimodal
+- Packing: false (multimodal sequences shouldn't be packed)
+
 ### Dataset Validation
 
 Always validate your dataset before training:
@@ -1412,56 +2089,63 @@ The estimator accounts for:
 6. **Enable Flash Attention 2**: Reduces attention memory from O(n^2) to O(n)
 7. **CPU offloading**: Moves optimizer states to CPU (slow but saves VRAM)
 
-### VRAM Reference Table
+### VRAM Reference Table (2026 GPUs)
 
 | Config | Model | Quant | Seq | Batch | Est. VRAM | Fits |
 |--------|-------|-------|-----|-------|-----------|------|
-| QLoRA 8B | 8B | 4bit | 4096 | 2 | ~7.8 GB | T4, RTX 3090, A100 |
-| QLoRA 8B | 8B | 4bit | 8192 | 4 | ~12.5 GB | T4 (tight), RTX 3090, A100 |
-| Full 8B | 8B | fp16 | 4096 | 2 | ~22 GB | RTX 3090, A100 |
-| QLoRA 13B | 13B | 4bit | 4096 | 2 | ~10.5 GB | RTX 3090, A100 |
-| QLoRA 70B | 70B | 4bit | 4096 | 1 | ~38 GB | A100-80, H100 |
+| QLoRA 8B | 8B | 4bit | 4096 | 2 | ~7.8 GB | T4, RTX 3090/4090/5090, A100, H100 |
+| QLoRA 8B | 8B | 4bit | 8192 | 4 | ~12.5 GB | T4 (tight), RTX 3090/4090/5090, A100, H100 |
+| QLoRA 8B | 8B | 4bit | 32768 | 2 | ~10.2 GB | RTX 4090/5090, A100-40/80, H100, M4 Max |
+| Full 8B | 8B | fp16 | 4096 | 2 | ~22 GB | RTX 3090/4090/5090, A100, H100 |
+| QLoRA 13B | 13B | 4bit | 4096 | 2 | ~10.5 GB | RTX 3090/4090/5090, A100, H100, M4 Max |
+| QLoRA 30B-A3B | 30B | 4bit | 4096 | 2 | ~14.2 GB | RTX 4090/5090, A100-40/80, H100 |
+| QLoRA 70B | 70B | 4bit | 4096 | 1 | ~38 GB | A100-80, H100, H200, B200 |
+| QLoRA 70B | 70B | 4bit | 8192 | 2 | ~52 GB | A100-80, H100, H200, B200 |
+| QLoRA 405B | 405B | 4bit | 4096 | 1 | ~185 GB | H200, B200, MI325X (multi-GPU) |
+| Full 70B | 70B | fp16 | 4096 | 1 | ~140 GB | B200, H200 (multi-GPU) |
+
+### 2026 GPU Quick Reference
+
+| GPU | VRAM | QLoRA 8B | QLoRA 70B | Full 8B | Best For |
+|-----|------|----------|-----------|---------|----------|
+| T4 | 16GB | ✓ (8192) | ✗ | ✗ | Colab/Kaggle free |
+| P100 | 16GB | ✓ (8192) | ✗ | ✗ | Legacy cloud |
+| RTX 3090 | 24GB | ✓ (16384) | ✗ | ✓ | Local value |
+| RTX 4090 | 24GB | ✓ (32768) | ✗ | ✓ | Local best |
+| **RTX 5090** | **32GB** | ✓ (65536) | ✓ (tight) | ✓ | **Local 2026 king** |
+| A10G | 24GB | ✓ (32768) | ✗ | ✓ | Cloud (AWS g5) |
+| A10 | 24GB | ✓ (32768) | ✗ | ✓ | Cloud |
+| L4 | 24GB | ✓ (32768) | ✗ | ✓ | Low-power cloud |
+| A100-40 | 40GB | ✓ (65536) | ✓ (tight) | ✓ | Cloud standard |
+| A100-80 | 80GB | ✓ (131072) | ✓ | ✓ | Cloud production |
+| **H100** | **80GB** | ✓ (131072) | ✓ (32768) | ✓ | **Training standard** |
+| **H200** | **141GB** | ✓ (262144) | ✓ (65536) | ✓ | **Large model cloud** |
+| **B200** | **192GB** | ✓ (524288) | ✓ (131072) | ✓ | **SOTA cloud** |
+| **MI300X** | **192GB** | ✓ (262144) | ✓ (65536) | ✓ | **AMD cloud** |
+| **MI325X** | **256GB** | ✓ (524288) | ✓ (131072) | ✓ | **Largest VRAM** |
+| **M4 Max** | **48GB** | ✓ (32768) | ✗ | ✓ | **Apple local** |
+| **M4 Ultra** | **192GB** | ✓ (131072) | ✓ (32768) | ✓ | **Apple max** |
+
+### Max Model Size by GPU (2026)
+
+| GPU | QLoRA | Full Fine-tune |
+|-----|-------|----------------|
+| T4 (16GB) | 7B-8B | 1B-3B |
+| RTX 3090 (24GB) | 13B | 7B-8B |
+| RTX 4090 (24GB) | 13B | 7B-8B |
+| **RTX 5090 (32GB)** | **30B-A3B MoE** | **8B** |
+| A100-40 (40GB) | 34B | 13B |
+| A100-80 (80GB) | 70B | 34B |
+| **H100 (80GB)** | **70B** | **34B** |
+| **H200 (141GB)** | **405B (multi-GPU)** | **70B** |
+| **B200 (192GB)** | **405B** | **70B** |
+| **MI325X (256GB)** | **405B+** | **70B** |
+| **M4 Max (48GB)** | **13B** | **3B-7B** |
+| **M4 Ultra (192GB)** | **70B** | **13B** |
 
 ---
 
-## Optimization Techniques
-
-### Flash Attention 2
-
-Reduces attention memory from O(n^2) to O(n) and speeds up computation.
-
-```bash
-# Install
-pip install flash-attn --no-build-isolation
-
-# Requires: CUDA 11.8+, GPU arch sm_80+ (A100, RTX 3090/4090, H100)
-# T4 does NOT support Flash Attention 2
-```
-
-```python
-# In TrainingArguments
-args = TrainingArguments(
-    attn_implementation="flash_attention_2",  # or "sdpa"
-    ...
-)
-```
-
-**When to use:** Always enable if your GPU supports it (A100, RTX 3090/4090, H100). Not available on T4.
-
-### SDPA (Scaled Dot Product Attention)
-
-PyTorch native attention optimization. Works on more GPUs than Flash Attention 2.
-
-```python
-args = TrainingArguments(
-    attn_implementation="sdpa",
-    ...
-)
-```
-
-**When to use:** Fallback when Flash Attention 2 is not available (T4, P100, V100).
-
-### Gradient Checkpointing
+## Optimization Techniques (2026 Edition)
 
 Trades compute for memory by recomputing activations during backward pass.
 
@@ -1686,6 +2370,89 @@ fsdp_config:
 }
 ```
 
+### FSDP2 (Fully Sharded Data Parallel 2) - 2026
+
+FSDP2 (PyTorch 2.3+) significantly improves on FSDP1 with better communication overlap, reduced memory overhead, and native `torch.compile` support.
+
+```bash
+# Launch with FSDP2
+accelerate launch --fsdp "full_shard auto_wrap" --fsdp_transformer_layer_cls_to_wrap LlamaDecoderLayer train.py
+
+# Or with torchrun
+torchrun --nproc_per_node 8 --rdzv_backend=c10d --rdzv_endpoint=localhost:29500 train.py
+```
+
+```yaml
+# Axolotl FSDP2 config
+fsdp:
+  - full_shard
+  - auto_wrap
+fsdp_config:
+  fsdp_version: 2
+  mixed_precision: "bf16"
+  sharding_strategy: "FULL_SHARD"
+  backward_prefetch: "BACKWARD_PRE"
+  forward_prefetch: true
+  limit_all_gathers: true
+  use_orig_params: true
+```
+
+**Key FSDP2 improvements:**
+- ~30% faster than FSDP1
+- Better memory efficiency with `use_orig_params`
+- Native `torch.compile` integration
+- Reduced communication overhead
+
+### Ring Attention (Sequence Parallelism)
+
+For ultra-long context training (128K+ tokens), Ring Attention distributes attention computation across GPUs in a ring topology.
+
+```bash
+# Ring Attention with 8 GPUs for 128K context
+torchrun --nproc_per_node 8 train.py --ring-attn --seq-len 131072
+```
+
+```python
+# In training script (requires xformers or flash-attn 2.5+)
+from flash_attn import flash_attn_varlen_func
+# Or use xformers ring attention
+```
+
+**When to use:** Context length > 64K, multi-GPU clusters (8+ GPUs)
+
+### 3D Parallelism (TP + PP + DP)
+
+For trillion-parameter models, combine Tensor Parallelism (TP), Pipeline Parallelism (PP), and Data Parallelism (DP).
+
+```bash
+# Megatron-LM style 3D parallelism
+torchrun --nproc_per_node 64 \
+  --tensor-model-parallel-size 4 \
+  --pipeline-model-parallel-size 4 \
+  --data-parallel-size 4 \
+  train.py
+```
+
+```yaml
+# Axolotl 3D parallel config
+parallelism:
+  tensor_model_parallel_size: 4
+  pipeline_model_parallel_size: 4
+  data_parallel_size: 4
+```
+
+**When to use:** Models > 70B, multi-node clusters (64+ GPUs)
+
+### ULYSSES Sequence Parallelism
+
+Alternative to Ring Attention for long context, uses all-to-all communication.
+
+```bash
+torchrun --nproc_per_node 8 train.py --ulysses-sp --seq-len 131072
+```
+
+**When to use:** When Ring Attention has high communication overhead
+
 ---
 
 ## Export Pipeline
@@ -1783,14 +2550,150 @@ Or use the script:
 python scripts/convert_to_gptq.py --model outputs/merged --output outputs/model-gptq --bits 4
 ```
 
-### Deployment Compatibility
+### Deployment Compatibility (2026 Edition)
 
-| Format | Ollama | LM Studio | vLLM | TGI | llama.cpp |
-|--------|--------|-----------|------|-----|-----------|
-| GGUF | Yes | Yes | No | No | Yes |
-| AWQ | No | No | Yes | Yes | No |
-| GPTQ | No | No | Yes | Yes | No |
-| HF safetensors | Yes | Yes | Yes | Yes | Yes |
+| Format | Ollama | LM Studio | vLLM | SGLang | TGI | TensorRT-LLM | llama.cpp | ExLlamaV2 |
+|--------|--------|-----------|------|--------|-----|--------------|-----------|-----------|
+| GGUF | Yes | Yes | No | No | No | No | Yes | No |
+| AWQ | No | No | Yes | Yes | Yes | Yes | No | No |
+| GPTQ | No | No | Yes | Yes | Yes | Yes | No | No |
+| EXL2 | No | No | No | No | No | No | No | Yes |
+| EXL3 | No | No | No | No | No | No | No | Yes |
+| FP8 | No | No | Yes | Yes | Yes | Yes | No | No |
+| NVFP4 | No | No | No | No | No | Yes | No | No |
+| MXFP4 | No | No | No | No | No | Yes | No | No |
+| HF safetensors | Yes | Yes | Yes | Yes | Yes | Yes | No | No |
+| ONNX | No | No | No | No | No | Yes | No | No |
+
+### 2026 Recommendations by Use Case
+
+| Use Case | Recommended Format | Reason |
+|----------|-------------------|--------|
+| Local LLM (Apple Silicon) | GGUF Q4_K_M | Native llama.cpp/MLX support |
+| Local LLM (NVIDIA) | GGUF Q4_K_M or AWQ w4-g128 | Best compatibility |
+| Local LLM (ExLlamaV2) | EXL2 4.0bpw | Fastest inference |
+| Production vLLM | AWQ w4-g128 or FP8 (H100+) | High throughput |
+| Production SGLang | AWQ w4-g128 or FP8 | RadixAttention + FP8 |
+| Production TensorRT-LLM | FP8 (H100) or NVFP4 (Blackwell) | Maximum performance |
+| Edge/Mobile | GGUF Q4_K_M or Q3_K_M | Small size, good quality |
+| Max Quality | HF BF16 or FP16 | No quantization loss |
+| Max Speed | EXL2 4.0bpw or TensorRT-LLM FP8/NVFP4 | Hardware-optimized |
+
+### Step 2: Convert to GGUF (Updated with IQ Quants)
+
+For Ollama, LM Studio, llama.cpp deployment:
+
+```bash
+# Clone llama.cpp
+git clone https://github.com/ggerganov/llama.cpp
+cd llama.cpp
+
+# Convert to GGUF
+python convert_hf_to_gguf.py ../outputs/merged --outfile ../outputs/model-f16.gguf --outtype f16
+
+# Quantize (new IQ quants for better quality/size)
+./llama-quantize ../outputs/model-f16.gguf ../outputs/model-Q4_K_M.gguf Q4_K_M
+./llama-quantize ../outputs/model-f16.gguf ../outputs/model-Q5_K_M.gguf Q5_K_M
+./llama-quantize ../outputs/model-f16.gguf ../outputs/model-Q6_K.gguf Q6_K
+./llama-quantize ../outputs/model-f16.gguf ../outputs/model-Q8_0.gguf Q8_0
+./llama-quantize ../outputs/model-f16.gguf ../outputs/model-IQ4_XS.gguf IQ4_XS  # Importance quantized
+```
+
+**GGUF quantization levels (2026):**
+- Q4_K_M: 4-bit, best balance of quality/size (**recommended**)
+- Q5_K_M: 5-bit, slightly better quality, slightly larger
+- Q6_K: 6-bit, near-lossless
+- Q8_0: 8-bit, near-original quality
+- IQ4_XS: 4-bit importance quantized, better than Q4_K_M
+- IQ3_XXS: 3-bit importance quantized, smaller than Q3_K_M
+- F16: Full 16-bit, no quality loss
+
+Or use the script:
+```bash
+python scripts/convert_to_gguf.py --model outputs/merged --output outputs/model --quants Q4_K_M Q5_K_M Q6_K Q8_0 IQ4_XS
+```
+
+### Step 3: Convert to AWQ (Updated)
+
+For vLLM, SGLang, TGI, TensorRT-LLM deployment:
+
+```bash
+pip install autoawq
+
+# AWQ with zero-point for better accuracy
+python -m awq.entry --model_path outputs/merged --w_bit 4 --q_group_size 128 --zero_point --calib_data wikitext --output_path outputs/model-awq
+```
+
+Or use the script:
+```bash
+python scripts/convert_to_awq.py --model outputs/merged --output outputs/model-awq --bits 4 --group-size 128 --zero-point
+```
+
+### Step 4: Convert to GPTQ (Marlin Kernels)
+
+For vLLM, SGLang, TGI, TensorRT-LLM with Marlin kernels:
+
+```bash
+pip install auto-gptq
+
+# GPTQ with Marlin kernels (faster inference on Ampere+)
+python -m auto_gptq --model outputs/merged --quantize --bits 4 --group-size 128 --output outputs/model-gptq --use-marlin
+```
+
+Or use the script:
+```bash
+python scripts/convert_to_gptq.py --model outputs/merged --output outputs/model-gptq --bits 4 --group-size 128 --marlin
+```
+
+### Step 5: Convert to EXL2 (ExLlamaV2)
+
+For ExLlamaV2 inference engine (fastest local inference):
+
+```bash
+pip install exllamav2
+
+python -m exllamav2.convert -i outputs/merged -o outputs/exl2_model -b 4.0  # 4.0 bits per weight
+```
+
+### Step 6: Convert to FP8 (Hopper/Blackwell)
+
+For native FP8 on H100/H200/B200/RTX 5090:
+
+```bash
+python scripts/quantize_fp8.py --model outputs/merged --output outputs/model-fp8 --dtype fp8_e4m3
+```
+
+Requires: Hopper (H100/H200) or Blackwell (B200/RTX 5090) GPU, vLLM 0.6+, SGLang 0.4+, TensorRT-LLM 0.12+
+
+### Step 7: Convert to NVFP4 (Blackwell Only)
+
+For NVFP4 on B200/RTX 5090/RTX 5080:
+
+```bash
+python scripts/quantize_nvfp4.py --model outputs/merged --output outputs/model-nvfp4 --tp-size 1
+```
+
+Requires: Blackwell architecture, TensorRT-LLM 0.12+
+
+### Step 8: Convert to TensorRT-LLM
+
+For maximum inference performance on NVIDIA GPUs:
+
+```bash
+# Use NVIDIA container: nvcr.io/nvidia/tensorrt-llm:latest
+
+# FP16 engine
+trtllm-build --checkpoint_dir outputs/merged --output_dir trt_engine --dtype float16
+
+# FP8 engine (Hopper+)
+trtllm-build --checkpoint_dir outputs/merged --output_dir trt_engine --dtype fp8 --calib_data calib_data.json
+
+# INT4 AWQ engine
+trtllm-build --checkpoint_dir outputs/merged --output_dir trt_engine --dtype int4 --quant_algo awq --calib_data calib_data.json
+
+# NVFP4 engine (Blackwell)
+trtllm-build --checkpoint_dir outputs/merged --output_dir trt_engine --dtype nvfp4
+```
 
 ### Push to HuggingFace Hub
 
@@ -2028,7 +2931,7 @@ args = TrainingArguments(
 
 ---
 
-## Hardware Reference
+## Hardware Reference (2026 Edition)
 
 ### VRAM by GPU
 
@@ -2038,33 +2941,55 @@ args = TrainingArguments(
 | P100 | 16GB | 8B | 8B | 3B | 7B (tight) |
 | RTX 3090 | 24GB | 13B | 13B | 8B | 13B |
 | RTX 4090 | 24GB | 13B | 13B | 8B | 13B |
+| **RTX 5090** | **32GB** | **34B** | **30B-A3B MoE** | **13B** | **13B (tight)** |
 | A10G | 24GB | 13B | 13B | 8B | 13B |
 | A100-40 | 40GB | 34B | 34B | 13B | 34B |
 | A100-80 | 80GB | 70B | 70B | 34B | 70B |
 | H100 | 80GB | 70B | 70B | 34B | 70B |
+| **H200** | **141GB** | **405B** | **405B** | **70B** | **405B** |
+| **B200** | **192GB** | **405B+** | **405B+** | **70B** | **405B+** |
+| **MI300X** | **192GB** | **405B** | **405B** | **70B** | **405B** |
+| **MI325X** | **256GB** | **405B+** | **405B+** | **70B** | **405B+** |
+| **M4 Max** | **48GB** | **13B** | **13B** | **3B-7B** | **N/A** |
+| **M4 Ultra** | **192GB** | **405B** | **70B** | **13B** | **70B (tight)** |
 
-### Max Model Size by GPU
+### Max Model Size by GPU (2026)
 
 | GPU | QLoRA | Full Fine-tune |
 |-----|-------|----------------|
 | T4 (16GB) | 7B-8B | 1B-3B |
 | RTX 3090 (24GB) | 13B | 7B-8B |
+| RTX 4090 (24GB) | 13B | 7B-8B |
+| **RTX 5090 (32GB)** | **30B-A3B MoE** | **8B** |
 | A100-40 (40GB) | 34B | 13B |
 | A100-80 (80GB) | 70B | 34B |
-| H100 (80GB) | 70B | 34B |
+| **H100 (80GB)** | **70B** | **34B** |
+| **H200 (141GB)** | **405B (multi-GPU)** | **70B** |
+| **B200 (192GB)** | **405B+** | **70B** |
+| **MI325X (256GB)** | **405B+** | **70B** |
+| **M4 Max (48GB)** | **13B** | **3B-7B** |
+| **M4 Ultra (192GB)** | **70B** | **13B** |
 
-### Batch Size Recommendations
+### Batch Size Recommendations (2026)
 
-| GPU | 8B QLoRA | 13B QLoRA | 70B QLoRA |
-|-----|----------|-----------|-----------|
-| T4 | 2 | 1 | N/A |
-| RTX 3090 | 4 | 2 | 1 |
-| A100-40 | 8 | 4 | 2 |
-| A100-80 | 16 | 8 | 4 |
+| GPU | 8B QLoRA | 13B QLoRA | 30B-A3B QLoRA | 70B QLoRA |
+|-----|----------|-----------|---------------|-----------|
+| T4 | 2 | 1 | N/A | N/A |
+| RTX 3090 | 4 | 2 | 1 | 1 |
+| RTX 4090 | 4 | 2 | 1 | 1 |
+| **RTX 5090** | **8** | **4** | **2** | **2** |
+| A100-40 | 8 | 4 | 2 | 2 |
+| A100-80 | 16 | 8 | 4 | 4 |
+| **H100** | **32** | **16** | **8** | **4** |
+| **H200** | **64** | **32** | **16** | **8** |
+| **B200** | **128** | **64** | **32** | **16** |
+| **MI325X** | **128** | **64** | **32** | **16** |
+| **M4 Max** | **4** | **2** | **1** | N/A |
+| **M4 Ultra** | **16** | **8** | **4** | **2** |
 
 ---
 
-## Cost Optimization
+## Cost Optimization (2026 Pricing)
 
 ### Free Tier Strategies
 
@@ -2072,7 +2997,8 @@ args = TrainingArguments(
 - Session limit: 12 hours, idle timeout ~90 min
 - Save checkpoints every 500 steps to Drive
 - Use auto-reconnect cell
-- Colab Pro: $10/mo for A100 40GB
+- Colab Pro: $10/mo for A100 40GB priority
+- Colab Pro+: $50/mo for A100 80GB, background execution
 
 **Kaggle:**
 - 30 hours/week GPU quota
@@ -2084,6 +3010,25 @@ args = TrainingArguments(
 - Start with Kaggle (more GPU hours)
 - Use Colab for quick experiments
 - Switch to cloud for large models
+
+### Cloud GPU Pricing (2026 Rates - USD/hr)
+
+| Provider | GPU | On-Demand | Spot/Community | Notes |
+|----------|-----|-----------|----------------|-------|
+| RunPod | RTX 4090 | $0.60 | $0.44 | Community cloud |
+| RunPod | H100 | $6.50 | $2.89 | Secure cloud |
+| Lambda | A100 80GB | $3.50 | $1.50 | Reserved pricing |
+| Lambda | H100 | $6.50 | $3.50 | On-demand |
+| Vast.ai | RTX 3090 | $0.40 | $0.10 | Cheapest consumer |
+| Vast.ai | RTX 4090 | $0.70 | $0.40 | Inconsistent |
+| AWS | A100 80GB | $3.06 | $0.92 | P4d instances |
+| AWS | H100 | $6.50 | $2.50 | P5 instances |
+| GCP | A100 80GB | $2.93 | $0.88 | A2 instances |
+| GCP | H100 | $6.20 | $2.10 | A3 instances |
+| Azure | A100 80GB | $3.40 | $1.02 | ND96asr |
+| Azure | H100 | $7.50 | $3.00 | NDv5 series |
+| CoreWeave | A100 80GB | $2.50 | $1.20 | Good availability |
+| CoreWeave | H100 | $4.50 | $2.20 | H100 cluster |
 
 ### Checkpoint Frequency
 

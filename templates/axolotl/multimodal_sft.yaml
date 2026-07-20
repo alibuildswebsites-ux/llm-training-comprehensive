@@ -1,0 +1,84 @@
+# Axolotl Multimodal SFT Configuration
+# Run: axolotl train templates/axolotl/multimodal_sft.yaml
+
+model_config:
+  base_model: "Qwen/Qwen2-VL-7B-Instruct"
+  model_type: "Qwen2VLForConditionalGeneration"
+  trust_remote_code: true
+  torch_dtype: "bfloat16"
+  attn_implementation: "flash_attention_2"
+
+tokenizer_config:
+  tokenizer_type: "Qwen2Tokenizer"
+  trust_remote_code: true
+  chat_template: "qwen2_vl"
+
+datasets:
+  - path: "HuggingFaceM4/the_cauldron"
+    name: "docvqa"
+    type: "multimodal_chat"
+    conversation: "conversations"
+    roles:
+      user: "user"
+      assistant: "assistant"
+    message_field: "value"
+    image_field: "image"
+  - path: "lmms-lab/LLaVA-Instruct-150K"
+    type: "multimodal_chat"
+    conversation: "conversations"
+    roles:
+      user: "human"
+      assistant: "gpt"
+    message_field: "value"
+    image_field: "image"
+
+sequence_len: 8192
+sample_packing: false
+pad_to_sequence_len: true
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules:
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+  bias: "none"
+  task_type: "CAUSAL_LM"
+
+optimizer: "adamw_bnb_8bit"
+learning_rate: 2e-4
+lr_scheduler: "cosine"
+warmup_steps: 100
+num_epochs: 3
+micro_batch_size: 2
+gradient_accumulation_steps: 4
+
+freeze_vision_encoder: true
+freeze_audio_encoder: true
+
+gradient_checkpointing: true
+flash_attention: true
+fsdp: "full_shard"
+fsdp_config:
+  fsdp_version: 2
+  mixed_precision: "bf16"
+  sharding_strategy: "FULL_SHARD"
+  backward_prefetch: "BACKWARD_PRE"
+  forward_prefetch: true
+
+wandb_project: "axolotl-multimodal-sft"
+wandb_entity: null
+wandb_watch: "gradients"
+wandb_log_model: false
+
+output_dir: "axolotl_multimodal_output"
+save_steps: 500
+logging_steps: 10
+eval_steps: 500
+save_total_limit: 3

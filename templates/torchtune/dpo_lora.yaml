@@ -1,0 +1,80 @@
+# TorchTune DPO Configuration
+# Run: tune run dpo_finetune_distributed --config templates/torchtune/dpo_lora.yaml
+
+model:
+  _component_: torchtune.models.llama3.llama3_8b
+  tokenizer:
+    _component_: torchtune.models.llama3.llama3_tokenizer
+    path: "meta-llama/Meta-Llama-3-8B-Instruct"
+    max_seq_len: 4096
+
+tokenizer:
+  _component_: torchtune.models.llama3.llama3_tokenizer
+  path: "meta-llama/Meta-Llama-3-8B-Instruct"
+  max_seq_len: 4096
+
+dataset:
+  _component_: torchtune.datasets.preference_dataset
+  source: "trl-lib/ultrafeedback_binarized"
+  split: "train[:5000]"
+  column_map:
+    prompt: "prompt"
+    chosen: "chosen"
+    rejected: "rejected"
+  train_on_input: false
+
+peft_config:
+  _component_: torchtune.training.peft.LoRAConfig
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules:
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+
+optimizer:
+  _component_: torch.optim.AdamW
+  lr: 5e-7
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  fused: true
+
+lr_scheduler:
+  _component_: torch.optim.lr_scheduler.CosineAnnealingLR
+  T_max: 1000
+  eta_min: 1e-7
+
+loss:
+  _component_: torchtune.modules.loss.DPOLoss
+  beta: 0.1
+  label_smoothing: 0.0
+
+checkpointer:
+  _component_: torchtune.training.FullModelHFCheckpointer
+  checkpoint_dir: "dpo_output"
+  checkpoint_files: ["model.safetensors"]
+  output_dir: "dpo_output"
+  model_type: "LLAMA3"
+
+logger:
+  _component_: torchtune.training.WandBLogger
+  project: "torchtune-dpo"
+  entity: null
+
+profiler: null
+
+batch_size: 2
+gradient_accumulation_steps: 4
+device: cuda
+dtype: bf16
+seed: 42
+epochs: 1
+max_steps: 1000
+log_every_n_steps: 10
+save_every_n_steps: 100
+validate_every_n_steps: 100

@@ -4,25 +4,32 @@ sft:
     unsloth:
       script: "templates/unsloth/sft_lora.py"
       default_config: "config/unsloth_sft_lora.yaml"
-      supports: ["lora", "qlora", "full", "dora"]
+      supports: ["lora", "qlora", "full", "dora", "vera", "loha", "lokr"]
       multi_gpu: "ddp"
+      gradient_checkpointing: true
+      flash_attention: true
     axolotl:
       config: "templates/axolotl/sft_lora.yaml"
-      supports: ["lora", "qlora", "full", "dora", "vera", "loha", "lokr"]
-      multi_gpu: ["fsdp", "deepspeed"]
+      supports: ["lora", "qlora", "full", "dora", "vera", "loha", "lokr", "ia3"]
+      multi_gpu: ["fsdp", "fsdp2", "deepspeed"]
+      gradient_checkpointing: true
+      flash_attention: true
     llama-factory:
       config: "templates/llama-factory/sft_lora.yaml"
       cli: "llamafactory-cli train"
-      supports: ["lora", "qlora", "full"]
+      supports: ["lora", "qlora", "full", "dora"]
       multi_gpu: "deepspeed"
+      gradient_checkpointing: true
     trl:
       script: "templates/trl/sft_trainer.py"
       supports: ["lora", "qlora", "full"]
       multi_gpu: "accelerate"
+      gradient_checkpointing: true
     torchtune:
       config: "templates/torchtune/sft_lora.yaml"
-      supports: ["lora", "full"]
-      multi_gpu: "fsdp"
+      supports: ["lora", "full", "qlora"]
+      multi_gpu: "fsdp2"
+      gradient_checkpointing: true
     raw-transformers:
       script: "templates/raw-transformers/sft_lora.py"
       supports: ["lora", "qlora", "full"]
@@ -31,18 +38,23 @@ sft:
     learning_rate:
       lora: 2e-4
       qlora: 2e-4
+      dora: 2e-4
       full: 2e-5
     num_epochs: 3
-    max_seq_length: 4096
+    max_seq_length: 8192
     packing: true
     warmup_ratio: 0.03
     weight_decay: 0.01
     optimizer:
       lora: "adamw_bnb_8bit"
       qlora: "adamw_bnb_8bit"
+      dora: "adamw_bnb_8bit"
       full: "adamw_torch_fused"
+    lr_scheduler: "cosine"
+    dataloader_num_workers: 4
   dataset_format: "sharegpt"
   val_split: 0.05
+  chat_template: "auto"
 
 dpo:
   description: "Direct Preference Optimization with chosen/rejected pairs"
@@ -50,47 +62,67 @@ dpo:
     unsloth:
       script: "templates/unsloth/dpo_lora.py"
       default_config: "config/unsloth_dpo_lora.yaml"
-      supports: ["lora", "qlora"]
+      supports: ["lora", "qlora", "dora"]
       multi_gpu: "ddp"
+      reference_free: false
     axolotl:
       config: "templates/axolotl/dpo_lora.yaml"
-      supports: ["lora", "qlora", "full"]
-      multi_gpu: ["fsdp", "deepspeed"]
+      supports: ["lora", "qlora", "full", "dora"]
+      multi_gpu: ["fsdp2", "deepspeed"]
+      reference_free: false
     llama-factory:
       config: "templates/llama-factory/dpo_lora.yaml"
       cli: "llamafactory-cli train"
-      supports: ["lora", "qlora"]
+      supports: ["lora", "qlora", "dora"]
       multi_gpu: "deepspeed"
+      reference_free: false
     trl:
       script: "templates/trl/dpo_trainer.py"
       supports: ["lora", "qlora", "full"]
       multi_gpu: "accelerate"
+      reference_free: false
+    torchtune:
+      config: "templates/torchtune/dpo_lora.yaml"
+      supports: ["lora", "full"]
+      multi_gpu: "fsdp2"
+      reference_free: false
     raw-transformers:
       script: "templates/raw-transformers/dpo_lora.py"
       supports: ["lora", "qlora"]
       multi_gpu: "manual"
+      reference_free: false
   hyperparameters:
     learning_rate: 5e-7
     num_epochs: 1
     beta: 0.1
     loss_type: "sigmoid"
-    max_length: 1024
-    max_prompt_length: 512
+    label_smoothing: 0.0
+    max_length: 2048
+    max_prompt_length: 1024
     optimizer: "adamw_bnb_8bit"
+    lr_scheduler: "cosine"
+    warmup_ratio: 0.1
+    rpo_alpha: 1.0
   dataset_format: "dpo"
   val_split: 0.05
+  reference_model: "required"
 
 kto:
-  description: "Kahneman-Tversky Optimization with unpaired preferences"
+  description: "Kahneman-Tversky Optimization with unpaired preferences (desirable/undesirable)"
   frameworks:
     trl:
       script: "templates/trl/kto_trainer.py"
-      supports: ["lora", "qlora"]
+      supports: ["lora", "qlora", "full"]
       multi_gpu: "accelerate"
     axolotl:
       config: "templates/axolotl/kto_lora.yaml"
+      supports: ["lora", "qlora", "full"]
+      multi_gpu: ["fsdp2", "deepspeed"]
+    llama-factory:
+      config: "templates/llama-factory/kto_lora.yaml"
+      cli: "llamafactory-cli train"
       supports: ["lora", "qlora"]
-      multi_gpu: ["fsdp", "deepspeed"]
+      multi_gpu: "deepspeed"
   hyperparameters:
     learning_rate: 5e-7
     num_epochs: 1
@@ -98,30 +130,91 @@ kto:
     desirable_weight: 1.0
     undesirable_weight: 1.0
     optimizer: "adamw_bnb_8bit"
+    lr_scheduler: "cosine"
+    max_length: 2048
   dataset_format: "kto"
   val_split: 0.05
 
 orpo:
-  description: "Odds Ratio Preference Optimization - single stage alignment"
+  description: "Odds Ratio Preference Optimization - single stage alignment (no reference model needed)"
   frameworks:
     trl:
       script: "templates/trl/orpo_trainer.py"
-      supports: ["lora", "qlora"]
+      supports: ["lora", "qlora", "full"]
       multi_gpu: "accelerate"
     axolotl:
       config: "templates/axolotl/orpo_lora.yaml"
+      supports: ["lora", "qlora", "full"]
+      multi_gpu: ["fsdp2", "deepspeed"]
+    llama-factory:
+      config: "templates/llama-factory/orpo_lora.yaml"
+      cli: "llamafactory-cli train"
       supports: ["lora", "qlora"]
-      multi_gpu: ["fsdp", "deepspeed"]
+      multi_gpu: "deepspeed"
+    unsloth:
+      script: "templates/unsloth/orpo_lora.py"
+      supports: ["lora", "qlora"]
+      multi_gpu: "ddp"
+  hyperparameters:
+    learning_rate: 1e-5
+    num_epochs: 1
+    beta: 0.1
+    loss_type: "orpo"
+    max_length: 2048
+    max_prompt_length: 1024
+    optimizer: "adamw_bnb_8bit"
+    lr_scheduler: "cosine"
+  dataset_format: "orpo"
+  val_split: 0.05
+  reference_model: "not_required"
+
+simpo:
+  description: "Simple Preference Optimization - reference-free DPO variant with length normalization"
+  frameworks:
+    trl:
+      script: "templates/trl/simpo_trainer.py"
+      supports: ["lora", "qlora", "full"]
+      multi_gpu: "accelerate"
+    axolotl:
+      config: "templates/axolotl/simpo_lora.yaml"
+      supports: ["lora", "qlora"]
+      multi_gpu: ["fsdp2", "deepspeed"]
+    llama-factory:
+      config: "templates/llama-factory/simpo_lora.yaml"
+      cli: "llamafactory-cli train"
+      supports: ["lora", "qlora"]
+      multi_gpu: "deepspeed"
+  hyperparameters:
+    learning_rate: 5e-7
+    num_epochs: 1
+    beta: 2.0
+    gamma: 0.5
+    max_length: 2048
+    optimizer: "adamw_bnb_8bit"
+    lr_scheduler: "cosine"
+  dataset_format: "simpo"
+  val_split: 0.05
+  reference_model: "not_required"
+
+cpo:
+  description: "Contrastive Preference Optimization - contrastive learning for alignment"
+  frameworks:
+    trl:
+      script: "templates/trl/cpo_trainer.py"
+      supports: ["lora", "qlora"]
+      multi_gpu: "accelerate"
   hyperparameters:
     learning_rate: 1e-5
     num_epochs: 1
     beta: 0.1
     optimizer: "adamw_bnb_8bit"
-  dataset_format: "orpo"
+    lr_scheduler: "cosine"
+    max_length: 2048
+  dataset_format: "cpo"
   val_split: 0.05
 
 ppo:
-  description: "Proximal Policy Optimization with reward model"
+  description: "Proximal Policy Optimization with reward model (traditional RLHF)"
   frameworks:
     trl:
       script: "templates/trl/ppo_trainer.py"
@@ -138,12 +231,18 @@ ppo:
     batch_size: 64
     kl_penalty: "kl"
     init_kl_coef: 0.2
+    target_kl: 6.0
+    cliprange: 0.2
+    cliprange_value: 0.2
+    vf_coef: 0.1
     optimizer: "adamw_torch_fused"
+    lr_scheduler: "cosine"
   dataset_format: "rl"
   val_split: 0.05
+  reward_model: "required"
 
 grpo:
-  description: "Group Relative Policy Optimization - DeepSeek style RL"
+  description: "Group Relative Policy Optimization - DeepSeek R1 style RL (no critic needed)"
   frameworks:
     trl:
       script: "templates/trl/grpo_trainer.py"
@@ -153,49 +252,60 @@ grpo:
       script: "templates/unsloth/grpo_lora.py"
       supports: ["lora", "qlora"]
       multi_gpu: "ddp"
+    axolotl:
+      config: "templates/axolotl/grpo_lora.yaml"
+      supports: ["lora", "qlora"]
+      multi_gpu: ["fsdp2", "deepspeed"]
+    llama-factory:
+      config: "templates/llama-factory/grpo_lora.yaml"
+      cli: "llamafactory-cli train"
+      supports: ["lora", "qlora"]
+      multi_gpu: "deepspeed"
   hyperparameters:
     learning_rate: 1e-6
     num_generations: 8
-    max_completion_length: 512
+    max_completion_length: 1024
     beta: 0.04
     temperature: 0.7
+    top_p: 0.9
+    epsilon: 0.2
+    epsilon_high: 0.28
     optimizer: "adamw_torch_fused"
-  dataset_format: "rl"
+    lr_scheduler: "cosine"
+    reward_weights: [1.0, 0.1, 0.1]
+  dataset_format: "grpo"
   val_split: 0.05
+  reward_functions: "required"
+  reference_model: "not_required"
 
-cpo:
-  description: "Contrastive Preference Optimization"
+dapo:
+  description: "Decoupled Advantage Policy Optimization - improved GRPO with length normalization"
   frameworks:
     trl:
-      script: "templates/trl/cpo_trainer.py"
-      supports: ["lora", "qlora"]
+      script: "templates/trl/dapo_trainer.py"
+      supports: ["lora", "qlora", "full"]
       multi_gpu: "accelerate"
-  hyperparameters:
-    learning_rate: 1e-5
-    num_epochs: 1
-    beta: 0.1
-    optimizer: "adamw_bnb_8bit"
-  dataset_format: "cpo"
-  val_split: 0.05
-
-simpo:
-  description: "Simple Preference Optimization - reference-free DPO variant"
-  frameworks:
-    trl:
-      script: "templates/trl/simpo_trainer.py"
+    unsloth:
+      script: "templates/unsloth/dapo_lora.py"
       supports: ["lora", "qlora"]
-      multi_gpu: "accelerate"
+      multi_gpu: "ddp"
   hyperparameters:
-    learning_rate: 5e-7
-    num_epochs: 1
-    beta: 2.0
-    gamma: 0.5
-    optimizer: "adamw_bnb_8bit"
-  dataset_format: "simpo"
+    learning_rate: 1e-6
+    num_generations: 8
+    max_completion_length: 1024
+    beta: 0.01
+    temperature: 0.7
+    clip_ratio: 0.2
+    clip_ratio_c: 3.0
+    optimizer: "adamw_torch_fused"
+    lr_scheduler: "cosine"
+  dataset_format: "grpo"
   val_split: 0.05
+  reward_functions: "required"
+  reference_model: "not_required"
 
 reward-modeling:
-  description: "Train reward model from preference data for PPO"
+  description: "Train reward model from preference data for PPO/RLHF"
   frameworks:
     trl:
       script: "templates/trl/reward_trainer.py"
@@ -203,8 +313,8 @@ reward-modeling:
       multi_gpu: "accelerate"
     axolotl:
       config: "templates/axolotl/reward_modeling.yaml"
-      supports: ["lora", "qlora"]
-      multi_gpu: ["fsdp", "deepspeed"]
+      supports: ["lora", "qlora", "full"]
+      multi_gpu: ["fsdp2", "deepspeed"]
     llama-factory:
       config: "templates/llama-factory/reward_modeling.yaml"
       cli: "llamafactory-cli train"
@@ -215,11 +325,12 @@ reward-modeling:
     num_epochs: 1
     max_length: 1024
     optimizer: "adamw_torch_fused"
+    lr_scheduler: "cosine"
   dataset_format: "reward"
   val_split: 0.05
 
 continued-pretraining:
-  description: "Continued pretraining on raw text corpora"
+  description: "Continued pretraining on raw text corpora (domain adaptation)"
   frameworks:
     unsloth:
       script: "templates/unsloth/pretrain.py"
@@ -228,7 +339,7 @@ continued-pretraining:
     axolotl:
       config: "templates/axolotl/pretrain.yaml"
       supports: ["lora", "qlora", "full"]
-      multi_gpu: ["fsdp", "deepspeed"]
+      multi_gpu: ["fsdp2", "deepspeed"]
     llama-factory:
       config: "templates/llama-factory/pretrain.yaml"
       cli: "llamafactory-cli train"
@@ -237,15 +348,138 @@ continued-pretraining:
     torchtune:
       config: "templates/torchtune/pretrain.yaml"
       supports: ["lora", "full"]
-      multi_gpu: "fsdp"
+      multi_gpu: "fsdp2"
   hyperparameters:
     learning_rate:
       lora: 1e-4
+      qlora: 1e-4
       full: 1e-5
     num_epochs: 1
     max_seq_length: 8192
     packing: true
     warmup_ratio: 0.05
     optimizer: "adamw_torch_fused"
+    lr_scheduler: "cosine"
   dataset_format: "text"
   val_split: 0.01
+
+multimodal-sft:
+  description: "Multimodal SFT for vision/audio models (Qwen2-VL, Llama-3.2-Vision, Pixtral, Qwen2-Audio)"
+  frameworks:
+    unsloth:
+      script: "templates/unsloth/multimodal_sft.py"
+      supports: ["lora", "qlora"]
+      multi_gpu: "ddp"
+    axolotl:
+      config: "templates/axolotl/multimodal_sft.yaml"
+      supports: ["lora", "qlora", "full"]
+      multi_gpu: ["fsdp2", "deepspeed"]
+    llama-factory:
+      config: "templates/llama-factory/multimodal_sft.yaml"
+      cli: "llamafactory-cli train"
+      supports: ["lora", "qlora"]
+      multi_gpu: "deepspeed"
+    trl:
+      script: "templates/trl/multimodal_sft.py"
+      supports: ["lora", "qlora"]
+      multi_gpu: "accelerate"
+  hyperparameters:
+    learning_rate:
+      lora: 2e-4
+      qlora: 2e-4
+    num_epochs: 3
+    max_seq_length: 8192
+    packing: false
+    warmup_ratio: 0.03
+    weight_decay: 0.01
+    optimizer:
+      lora: "adamw_bnb_8bit"
+      qlora: "adamw_bnb_8bit"
+    freeze_vision_encoder: true
+    freeze_audio_encoder: true
+    image_token_id: 151655
+    video_token_id: 151656
+  dataset_format: "multimodal_sharegpt"
+  val_split: 0.05
+
+multimodal-dpo:
+  description: "Multimodal DPO for vision/audio alignment"
+  frameworks:
+    unsloth:
+      script: "templates/unsloth/multimodal_dpo.py"
+      supports: ["lora", "qlora"]
+      multi_gpu: "ddp"
+    axolotl:
+      config: "templates/axolotl/multimodal_dpo.yaml"
+      supports: ["lora", "qlora"]
+      multi_gpu: ["fsdp2", "deepspeed"]
+    llama-factory:
+      config: "templates/llama-factory/multimodal_dpo.yaml"
+      cli: "llamafactory-cli train"
+      supports: ["lora", "qlora"]
+      multi_gpu: "deepspeed"
+  hyperparameters:
+    learning_rate: 5e-7
+    num_epochs: 1
+    beta: 0.1
+    loss_type: "sigmoid"
+    max_length: 2048
+    max_prompt_length: 1024
+    optimizer: "adamw_bnb_8bit"
+    freeze_vision_encoder: true
+  dataset_format: "multimodal_dpo"
+  val_split: 0.05
+  reference_model: "required"
+
+mlx-sft:
+  description: "MLX-native SFT on Apple Silicon (M1/M2/M3/M4)"
+  frameworks:
+    mlx-tune:
+      script: "templates/mlx-tune/sft_lora.py"
+      supports: ["lora", "qlora", "full"]
+      multi_gpu: "native"
+  hyperparameters:
+    learning_rate:
+      lora: 2e-4
+      qlora: 2e-4
+      full: 1e-5
+    num_epochs: 3
+    max_seq_length: 4096
+    batch_size: 2
+    optimizer: "adamw"
+  dataset_format: "sharegpt"
+  val_split: 0.05
+
+mlx-dpo:
+  description: "MLX-native DPO on Apple Silicon"
+  frameworks:
+    mlx-tune:
+      script: "templates/mlx-tune/dpo_lora.py"
+      supports: ["lora", "qlora"]
+      multi_gpu: "native"
+  hyperparameters:
+    learning_rate: 5e-7
+    num_epochs: 1
+    beta: 0.1
+    max_length: 2048
+    optimizer: "adamw"
+  dataset_format: "dpo"
+  val_split: 0.05
+
+mlx-grpo:
+  description: "MLX-native GRPO on Apple Silicon"
+  frameworks:
+    mlx-tune:
+      script: "templates/mlx-tune/grpo_lora.py"
+      supports: ["lora", "qlora"]
+      multi_gpu: "native"
+  hyperparameters:
+    learning_rate: 1e-6
+    num_generations: 8
+    max_completion_length: 512
+    beta: 0.04
+    temperature: 0.7
+    optimizer: "adamw"
+  dataset_format: "grpo"
+  val_split: 0.05
+  reward_functions: "required"

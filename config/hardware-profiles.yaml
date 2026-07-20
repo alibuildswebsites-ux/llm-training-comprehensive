@@ -1,20 +1,482 @@
 T4:
   vram_gb: 16
+  memory_bandwidth_gbps: 300
+  compute_capability: 7.5
+  architecture: "Turing"
+  tensor_cores: 320
+  fp16_tflops: 65
+  bf16_tflops: 65
   max_seq_len_8b_qlora: 8192
   recommended_batch_size: 2
   micro_batch_size: 2
+  platforms: ["Colab Free", "Colab Pro", "Kaggle Free"]
+  cost_per_hour_usd: 0.00
+  notes: "Free tier only; 12h/72h limits; preemption risk high"
+
 P100:
   vram_gb: 16
+  memory_bandwidth_gbps: 732
+  compute_capability: 6.0
+  architecture: "Pascal"
+  tensor_cores: 0
+  fp16_tflops: 21
+  bf16_tflops: 0
   max_seq_len_8b_qlora: 8192
   recommended_batch_size: 2
   micro_batch_size: 2
+  platforms: ["Colab Pro+", "Kaggle", "Lambda"]
+  cost_per_hour_usd: 0.75
+  notes: "No BF16; no tensor cores; Pascal arch"
+
 RTX3090:
   vram_gb: 24
+  memory_bandwidth_gbps: 936
+  compute_capability: 8.6
+  architecture: "Ampere"
+  tensor_cores: 328
+  fp16_tflops: 71
+  bf16_tflops: 71
   max_seq_len_8b_qlora: 16384
   recommended_batch_size: 4
   micro_batch_size: 4
-A100_80GB:
-  vram_gb: 80
+  platforms: ["Local", "Lambda", "RunPod", "Vast.ai"]
+  cost_per_hour_usd: 0.40
+  notes: "Best value for local; 24GB VRAM; Ampere tensor cores"
+
+RTX4090:
+  vram_gb: 24
+  memory_bandwidth_gbps: 1008
+  compute_capability: 8.9
+  architecture: "Ada Lovelace"
+  tensor_cores: 512
+  fp16_tflops: 165
+  bf16_tflops: 165
+  int8_tops: 660
+  fp8_tflops: 330
+  max_seq_len_8b_qlora: 32768
+  recommended_batch_size: 8
+  micro_batch_size: 4
+  platforms: ["Local", "Lambda", "RunPod", "Vast.ai", "FluidStack"]
+  cost_per_hour_usd: 0.60
+  notes: "Ada tensor cores; Hopper-like FP8; best consumer value"
+
+RTX4090D:
+  vram_gb: 24
+  memory_bandwidth_gbps: 936
+  compute_capability: 8.9
+  architecture: "Ada Lovelace"
+  tensor_cores: 456
+  fp16_tflops: 147
+  bf16_tflops: 147
+  max_seq_len_8b_qlora: 32768
+  recommended_batch_size: 8
+  micro_batch_size: 4
+  platforms: ["Local China", "Lambda"]
+  cost_per_hour_usd: 0.55
+  notes: "China-only 4090 variant; slightly fewer cores"
+
+RTX5090:
+  vram_gb: 32
+  memory_bandwidth_gbps: 1536
+  compute_capability: 10.0
+  architecture: "Blackwell"
+  tensor_cores: 680
+  fp16_tflops: 300
+  bf16_tflops: 300
+  int8_tops: 1200
+  fp8_tflops: 600
+  fp4_tflops: 1200
   max_seq_len_8b_qlora: 65536
   recommended_batch_size: 16
   micro_batch_size: 8
+  platforms: ["Local", "Lambda", "RunPod"]
+  cost_per_hour_usd: 1.20
+  notes: "Blackwell; native FP4/NF4; NVLink-C2C; 32GB GDDR7"
+
+RTX5080:
+  vram_gb: 16
+  memory_bandwidth_gbps: 1024
+  compute_capability: 10.0
+  architecture: "Blackwell"
+  tensor_cores: 420
+  fp16_tflops: 185
+  bf16_tflops: 185
+  int8_tops: 740
+  fp8_tflops: 370
+  fp4_tflops: 740
+  max_seq_len_8b_qlora: 32768
+  recommended_batch_size: 8
+  micro_batch_size: 4
+  platforms: ["Local", "Lambda"]
+  cost_per_hour_usd: 0.70
+  notes: "Blackwell; 16GB GDDR7; good mid-range"
+
+A100_40GB:
+  vram_gb: 40
+  memory_bandwidth_gbps: 1555
+  compute_capability: 8.0
+  architecture: "Ampere"
+  tensor_cores: 6912
+  fp16_tflops: 312
+  bf16_tflops: 312
+  int8_tops: 624
+  fp8_tflops: 0
+  max_seq_len_8b_qlora: 32768
+  recommended_batch_size: 12
+  micro_batch_size: 8
+  platforms: ["AWS", "GCP", "Azure", "Lambda", "RunPod"]
+  cost_per_hour_usd: 1.80
+  notes: "No FP8; NVLink; standard for multi-GPU training"
+
+A100_80GB:
+  vram_gb: 80
+  memory_bandwidth_gbps: 1935
+  compute_capability: 8.0
+  architecture: "Ampere"
+  tensor_cores: 6912
+  fp16_tflops: 312
+  bf16_tflops: 312
+  int8_tops: 624
+  fp8_tflops: 0
+  max_seq_len_8b_qlora: 65536
+  recommended_batch_size: 16
+  micro_batch_size: 8
+  platforms: ["AWS", "GCP", "Azure", "Lambda", "RunPod", "Kaggle"]
+  cost_per_hour_usd: 3.50
+  notes: "80GB HBM2e; best for 70B QLoRA; no FP8"
+
+H100_80GB:
+  vram_gb: 80
+  memory_bandwidth_gbps: 3350
+  compute_capability: 9.0
+  architecture: "Hopper"
+  tensor_cores: 18432
+  fp16_tflops: 990
+  bf16_tflops: 990
+  int8_tops: 1980
+  fp8_tflops: 1980
+  max_seq_len_8b_qlora: 131072
+  recommended_batch_size: 32
+  micro_batch_size: 16
+  platforms: ["AWS", "GCP", "Azure", "Lambda", "RunPod", "CoreWeave"]
+  cost_per_hour_usd: 6.50
+  notes: "Hopper; TEE; NVLink 4.0; FP8 native; Transformer Engine"
+
+H100_94GB:
+  vram_gb: 94
+  memory_bandwidth_gbps: 3350
+  compute_capability: 9.0
+  architecture: "Hopper"
+  tensor_cores: 18432
+  fp16_tflops: 990
+  bf16_tflops: 990
+  int8_tops: 1980
+  fp8_tflops: 1980
+  max_seq_len_8b_qlora: 131072
+  recommended_batch_size: 32
+  micro_batch_size: 16
+  platforms: ["AWS", "GCP", "Lambda"]
+  cost_per_hour_usd: 7.50
+  notes: "HBM3; 94GB for larger models"
+
+H200_141GB:
+  vram_gb: 141
+  memory_bandwidth_gbps: 4800
+  compute_capability: 9.0
+  architecture: "Hopper"
+  tensor_cores: 18432
+  fp16_tflops: 990
+  bf16_tflops: 990
+  int8_tops: 1980
+  fp8_tflops: 1980
+  max_seq_len_8b_qlora: 262144
+  recommended_batch_size: 64
+  micro_batch_size: 32
+  platforms: ["AWS", "GCP", "Azure", "Lambda", "CoreWeave"]
+  cost_per_hour_usd: 10.00
+  notes: "HBM3e; 141GB; fastest memory; best for 405B+ models"
+
+B200_192GB:
+  vram_gb: 192
+  memory_bandwidth_gbps: 8000
+  compute_capability: 10.0
+  architecture: "Blackwell"
+  tensor_cores: 20480
+  fp16_tflops: 2250
+  bf16_tflops: 2250
+  int8_tops: 4500
+  fp8_tflops: 4500
+  fp4_tflops: 9000
+  max_seq_len_8b_qlora: 524288
+  recommended_batch_size: 128
+  micro_batch_size: 64
+  platforms: ["AWS", "GCP", "Azure", "Lambda", "CoreWeave"]
+  cost_per_hour_usd: 18.00
+  notes: "Blackwell; 192GB HBM3e; NVLink 5.0; 1.8TB/s NVLink; FP4 native"
+
+GB200_NVL72:
+  vram_gb: 13824
+  memory_bandwidth_gbps: 576000
+  compute_capability: 10.0
+  architecture: "Blackwell"
+  tensor_cores: 1474560
+  fp16_tflops: 160000
+  bf16_tflops: 160000
+  int8_tops: 320000
+  fp8_tflops: 320000
+  fp4_tflops: 640000
+  max_seq_len_8b_qlora: 1048576
+  recommended_batch_size: 1024
+  micro_batch_size: 512
+  platforms: ["AWS", "GCP", "Azure", "CoreWeave"]
+  cost_per_hour_usd: 500.00
+  notes: "72x B200 in NVLink domain; rack-scale; trillion param training"
+
+MI300X_192GB:
+  vram_gb: 192
+  memory_bandwidth_gbps: 5300
+  compute_capability: "CDNA3"
+  architecture: "CDNA 3"
+  tensor_cores: 304
+  fp16_tflops: 1300
+  bf16_tflops: 1300
+  int8_tops: 2600
+  fp8_tflops: 2600
+  max_seq_len_8b_qlora: 262144
+  recommended_batch_size: 64
+  micro_batch_size: 32
+  platforms: ["AWS", "Azure", "Lambda", "Oracle Cloud"]
+  cost_per_hour_usd: 8.00
+  notes: "AMD Instinct; 192GB HBM3; ROCm 6.0+; vLLM/SGLang support"
+
+MI325X_256GB:
+  vram_gb: 256
+  memory_bandwidth_gbps: 6000
+  compute_capability: "CDNA3"
+  architecture: "CDNA 3"
+  tensor_cores: 304
+  fp16_tflops: 1300
+  bf16_tflops: 1300
+  int8_tops: 2600
+  fp8_tflops: 2600
+  max_seq_len_8b_qlora: 524288
+  recommended_batch_size: 128
+  micro_batch_size: 64
+  platforms: ["AWS", "Azure", "Oracle Cloud"]
+  cost_per_hour_usd: 12.00
+  notes: "AMD Instinct; 256GB HBM3E; largest VRAM single GPU 2026"
+
+Apple_M4_Max:
+  unified_memory_gb: 48
+  memory_bandwidth_gbps: 546
+  architecture: "Apple M4"
+  neural_engine_tops: 38
+  fp16_tflops: 52
+  max_seq_len_8b_qlora: 32768
+  recommended_batch_size: 4
+  micro_batch_size: 2
+  platforms: ["MacBook Pro M4 Max", "Mac Studio M4 Max"]
+  cost_per_hour_usd: 0.00
+  notes: "Unified memory; MLX native; 48GB shared; best for local dev"
+
+Apple_M4_Ultra:
+  unified_memory_gb: 192
+  memory_bandwidth_gbps: 1200
+  architecture: "Apple M4 Ultra"
+  neural_engine_tops: 76
+  fp16_tflops: 104
+  max_seq_len_8b_qlora: 131072
+  recommended_batch_size: 16
+  micro_batch_size: 8
+  platforms: ["Mac Studio M4 Ultra"]
+  cost_per_hour_usd: 0.00
+  notes: "192GB unified; dual M4 Max; best Apple for LLM training"
+
+L4_24GB:
+  vram_gb: 24
+  memory_bandwidth_gbps: 300
+  compute_capability: 8.9
+  architecture: "Ada Lovelace"
+  tensor_cores: 568
+  fp16_tflops: 181
+  bf16_tflops: 181
+  int8_tops: 362
+  fp8_tflops: 362
+  max_seq_len_8b_qlora: 32768
+  recommended_batch_size: 8
+  micro_batch_size: 4
+  platforms: ["GCP", "AWS", "Lambda", "RunPod"]
+  cost_per_hour_usd: 0.80
+  notes: "Ada; single-slot; low power; great for inference"
+
+L40S_48GB:
+  vram_gb: 48
+  memory_bandwidth_gbps: 864
+  compute_capability: 8.9
+  architecture: "Ada Lovelace"
+  tensor_cores: 1428
+  fp16_tflops: 362
+  bf16_tflops: 362
+  int8_tops: 724
+  fp8_tflops: 724
+  max_seq_len_8b_qlora: 65536
+  recommended_batch_size: 16
+  micro_batch_size: 8
+  platforms: ["AWS", "GCP", "Lambda", "RunPod", "CoreWeave"]
+  cost_per_hour_usd: 2.50
+  notes: "Ada; 48GB; great price/perf for training + inference"
+
+A10G_24GB:
+  vram_gb: 24
+  memory_bandwidth_gbps: 600
+  compute_capability: 8.6
+  architecture: "Ampere"
+  tensor_cores: 384
+  fp16_tflops: 125
+  bf16_tflops: 125
+  int8_tops: 250
+  max_seq_len_8b_qlora: 32768
+  recommended_batch_size: 8
+  micro_batch_size: 4
+  platforms: ["AWS g5", "RunPod"]
+  cost_per_hour_usd: 1.20
+  notes: "Ampere; AWS G5 instances; good availability"
+
+A10_24GB:
+  vram_gb: 24
+  memory_bandwidth_gbps: 600
+  compute_capability: 8.6
+  architecture: "Ampere"
+  tensor_cores: 384
+  fp16_tflops: 125
+  bf16_tflops: 125
+  int8_tops: 250
+  max_seq_len_8b_qlora: 32768
+  recommended_batch_size: 8
+  micro_batch_size: 4
+  platforms: ["AWS", "Lambda", "RunPod"]
+  cost_per_hour_usd: 1.00
+  notes: "Ampere; similar to A10G but more available"
+
+Kaggle_T4:
+  vram_gb: 16
+  memory_bandwidth_gbps: 300
+  compute_capability: 7.5
+  architecture: "Turing"
+  tensor_cores: 320
+  fp16_tflops: 65
+  max_seq_len_8b_qlora: 8192
+  recommended_batch_size: 2
+  micro_batch_size: 2
+  platforms: ["Kaggle"]
+  cost_per_hour_usd: 0.00
+  notes: "30h/week free; P100 also available; preemption risk"
+
+Kaggle_P100:
+  vram_gb: 16
+  memory_bandwidth_gbps: 732
+  compute_capability: 6.0
+  architecture: "Pascal"
+  tensor_cores: 0
+  fp16_tflops: 21
+  max_seq_len_8b_qlora: 8192
+  recommended_batch_size: 2
+  micro_batch_size: 2
+  platforms: ["Kaggle"]
+  cost_per_hour_usd: 0.00
+  notes: "No tensor cores; Pascal; slower but available"
+
+Colab_T4:
+  vram_gb: 16
+  memory_bandwidth_gbps: 300
+  compute_capability: 7.5
+  architecture: "Turing"
+  tensor_cores: 320
+  fp16_tflops: 65
+  max_seq_len_8b_qlora: 8192
+  recommended_batch_size: 2
+  micro_batch_size: 2
+  platforms: ["Colab Free", "Colab Pro"]
+  cost_per_hour_usd: 0.00
+  notes: "Free: T4, preemptive; Pro: T4/A100 priority"
+
+Colab_A100:
+  vram_gb: 40
+  memory_bandwidth_gbps: 1555
+  compute_capability: 8.0
+  architecture: "Ampere"
+  tensor_cores: 6912
+  fp16_tflops: 312
+  bf16_tflops: 312
+  max_seq_len_8b_qlora: 32768
+  recommended_batch_size: 12
+  micro_batch_size: 8
+  platforms: ["Colab Pro+", "Colab Enterprise"]
+  cost_per_hour_usd: 0.00
+  notes: "Pro+ gets A100 40GB; 100 compute units/day limit"
+
+RunPod_RTX4090:
+  vram_gb: 24
+  memory_bandwidth_gbps: 1008
+  compute_capability: 8.9
+  architecture: "Ada Lovelace"
+  tensor_cores: 512
+  fp16_tflops: 165
+  bf16_tflops: 165
+  int8_tops: 660
+  fp8_tflops: 330
+  max_seq_len_8b_qlora: 32768
+  recommended_batch_size: 8
+  micro_batch_size: 4
+  platforms: ["RunPod"]
+  cost_per_hour_usd: 0.44
+  notes: "Best cloud price/perf; community cloud; spot pricing"
+
+RunPod_H100:
+  vram_gb: 80
+  memory_bandwidth_gbps: 3350
+  compute_capability: 9.0
+  architecture: "Hopper"
+  tensor_cores: 18432
+  fp16_tflops: 990
+  bf16_tflops: 990
+  int8_tops: 1980
+  fp8_tflops: 1980
+  max_seq_len_8b_qlora: 131072
+  recommended_batch_size: 32
+  micro_batch_size: 16
+  platforms: ["RunPod"]
+  cost_per_hour_usd: 2.89
+  notes: "Best cloud H100 price; secure cloud; spot available"
+
+Lambda_A100:
+  vram_gb: 80
+  memory_bandwidth_gbps: 1935
+  compute_capability: 8.0
+  architecture: "Ampere"
+  tensor_cores: 6912
+  fp16_tflops: 312
+  bf16_tflops: 312
+  max_seq_len_8b_qlora: 65536
+  recommended_batch_size: 16
+  micro_batch_size: 8
+  platforms: ["Lambda Labs"]
+  cost_per_hour_usd: 1.50
+  notes: "Lambda Cloud; reserved pricing; good availability"
+
+Lambda_H100:
+  vram_gb: 80
+  memory_bandwidth_gbps: 3350
+  compute_capability: 9.0
+  architecture: "Hopper"
+  tensor_cores: 18432
+  fp16_tflops: 990
+  bf16_tflops: 990
+  int8_tops: 1980
+  fp8_tflops: 1980
+  max_seq_len_8b_qlora: 131072
+  recommended_batch_size: 32
+  micro_batch_size: 16
+  platforms: ["Lambda Labs"]
+  cost_per_hour_usd: 3.50
+  notes: "Lambda Cloud H100; on-demand; good for training"

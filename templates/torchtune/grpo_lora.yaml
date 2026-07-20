@@ -1,0 +1,84 @@
+# TorchTune GRPO Configuration
+# Run: tune run grpo_finetune_distributed --config templates/torchtune/grpo_lora.yaml
+
+model:
+  _component_: torchtune.models.llama3.llama3_8b
+  tokenizer:
+    _component_: torchtune.models.llama3.llama3_tokenizer
+    path: "meta-llama/Meta-Llama-3-8B-Instruct"
+    max_seq_len: 8192
+
+tokenizer:
+  _component_: torchtune.models.llama3.llama3_tokenizer
+  path: "meta-llama/Meta-Llama-3-8B-Instruct"
+  max_seq_len: 8192
+
+dataset:
+  _component_: torchtune.datasets.rl_dataset
+  source: "trl-lib/gsm8k"
+  split: "train[:1000]"
+  prompt_column: "question"
+  answer_column: "answer"
+
+peft_config:
+  _component_: torchtune.training.peft.LoRAConfig
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules:
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+
+optimizer:
+  _component_: torch.optim.AdamW
+  lr: 1e-6
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  fused: true
+
+lr_scheduler:
+  _component_: torch.optim.lr_scheduler.CosineAnnealingLR
+  T_max: 500
+  eta_min: 1e-7
+
+loss:
+  _component_: torchtune.modules.loss.GRPOLoss
+  beta: 0.04
+  num_generations: 8
+  temperature: 0.7
+  top_p: 0.9
+  epsilon: 0.2
+  epsilon_high: 0.28
+
+reward_functions:
+  - _component_: torchtune.rewards.format_reward
+  - _component_: torchtune.rewards.correctness_reward
+    dataset: "gsm8k"
+
+checkpointer:
+  _component_: torchtune.training.FullModelHFCheckpointer
+  checkpoint_dir: "grpo_output"
+  checkpoint_files: ["model.safetensors"]
+  output_dir: "grpo_output"
+  model_type: "LLAMA3"
+
+logger:
+  _component_: torchtune.training.WandBLogger
+  project: "torchtune-grpo"
+  entity: null
+
+batch_size: 1
+gradient_accumulation_steps: 8
+device: cuda
+dtype: bf16
+seed: 42
+epochs: 1
+max_steps: 500
+log_every_n_steps: 5
+save_every_n_steps: 50
+validate_every_n_steps: 100

@@ -1,57 +1,85 @@
 # Export Format → Conversion Commands & Compatibility
 # Used by export pipeline scripts (merge_lora.py, convert_to_*.py)
+# 2026 Update: Added EXL2, EXL3, FP8, NVFP4, MXFP4, GGUF improvements
 
 gguf:
-  description: "GGUF format for llama.cpp, Ollama, LM Studio"
+  description: "GGUF format for llama.cpp, Ollama, LM Studio, kobold.cpp"
   tool: "llama.cpp"
-  install: "git clone https://github.com/ggerganov/llama.cpp && cd llama.cpp && make"
+  install: "git clone https://github.com/ggerganov/llama.cpp && cd llama.cpp && make LLAMA_CUBLAS=1"
   quants:
+    Q2_K:
+      description: "2-bit K-quant, smallest, quality loss"
+      command: "llama-quantize model-f16.gguf model-Q2_K.gguf Q2_K"
+      size_factor: 0.16
+      quality: "acceptable"
+    Q3_K_M:
+      description: "3-bit K-quant medium, small with decent quality"
+      command: "llama-quantize model-f16.gguf model-Q3_K_M.gguf Q3_K_M"
+      size_factor: 0.20
+      quality: "good"
     Q4_K_M:
-      description: "4-bit K-quant medium, best balance of quality/size"
+      description: "4-bit K-quant medium, BEST balance quality/size (RECOMMENDED)"
       command: "llama-quantize model-f16.gguf model-Q4_K_M.gguf Q4_K_M"
-      size_factor: 0.28  # ~28% of fp16 size
+      size_factor: 0.26
       quality: "excellent"
       recommended: true
     Q5_K_M:
       description: "5-bit K-quant medium, slightly better quality"
       command: "llama-quantize model-f16.gguf model-Q5_K_M.gguf Q5_K_M"
-      size_factor: 0.33
+      size_factor: 0.31
       quality: "excellent+"
+    Q6_K:
+      description: "6-bit K-quant, near-lossless"
+      command: "llama-quantize model-f16.gguf model-Q6_K.gguf Q6_K"
+      size_factor: 0.37
+      quality: "near-lossless"
     Q8_0:
       description: "8-bit, near-lossless quality"
       command: "llama-quantize model-f16.gguf model-Q8_0.gguf Q8_0"
       size_factor: 0.50
       quality: "near-lossless"
-    Q3_K_M:
-      description: "3-bit K-quant medium, smaller but quality drop"
-      command: "llama-quantize model-f16.gguf model-Q3_K_M.gguf Q3_K_M"
-      size_factor: 0.22
-      quality: "good"
-    Q2_K:
-      description: "2-bit K-quant, very small, significant quality loss"
-      command: "llama-quantize model-f16.gguf model-Q2_K.gguf Q2_K"
-      size_factor: 0.18
-      quality: "acceptable"
+    BF16:
+      description: "Full bfloat16, no quantization"
+      command: "llama-quantize model-f16.gguf model-BF16.gguf BF16"
+      size_factor: 1.0
+      quality: "lossless"
     F16:
-      description: "Full 16-bit, no quantization"
+      description: "Full float16, no quantization"
       command: "llama-quantize model-f16.gguf model-F16.gguf F16"
       size_factor: 1.0
       quality: "lossless"
-    F32:
-      description: "Full 32-bit"
-      command: "llama-quantize model-f16.gguf model-F32.gguf F32"
-      size_factor: 2.0
-      quality: "lossless"
+    IQ1_S:
+      description: "1-bit importance quantized, experimental"
+      command: "llama-quantize model-f16.gguf model-IQ1_S.gguf IQ1_S"
+      size_factor: 0.12
+      quality: "experimental"
+    IQ2_XS:
+      description: "2-bit importance quantized"
+      command: "llama-quantize model-f16.gguf model-IQ2_XS.gguf IQ2_XS"
+      size_factor: 0.14
+      quality: "experimental"
+    IQ3_XXS:
+      description: "3-bit importance quantized"
+      command: "llama-quantize model-f16.gguf model-IQ3_XXS.gguf IQ3_XXS"
+      size_factor: 0.18
+      quality: "experimental"
+    IQ4_XS:
+      description: "4-bit importance quantized"
+      command: "llama-quantize model-f16.gguf model-IQ4_XS.gguf IQ4_XS"
+      size_factor: 0.23
+      quality: "good"
   conversion_steps:
     - "Merge LoRA adapters into base model (merge_lora.py)"
-    - "Convert HF to GGUF F16 (convert_hf_to_gguf.py)"
+    - "Convert HF to GGUF F16 (convert_hf_to_gguf.py --outtype f16)"
     - "Quantize to desired level (llama-quantize)"
   deployment:
     ollama: true
     lm_studio: true
     llama_cpp: true
+    koboldcpp: true
     vllm: false
     tgi: false
+    sglang: false
   architecture_support:
     llama: true
     qwen: true
@@ -63,14 +91,17 @@ gguf:
     baichuan: true
     internlm: true
     stablelm: true
+    nemotron: true
+    glm: true
+    lfm: true
 
 awq:
-  description: "AWQ (Activation-aware Weight Quantization) for fast inference"
+  description: "AWQ (Activation-aware Weight Quantization) for fast inference on NVIDIA GPUs"
   tool: "autoawq"
   install: "pip install autoawq"
   quants:
     w4-g128:
-      description: "4-bit, group size 128 (default)"
+      description: "4-bit, group size 128 (DEFAULT, recommended)"
       command: "python -m awq.entry --model_path merged_model --w_bit 4 --q_group_size 128 --calib_data wikitext --output_path awq_model"
       size_factor: 0.28
       quality: "excellent"
@@ -85,60 +116,76 @@ awq:
       command: "python -m awq.entry --model_path merged_model --w_bit 3 --q_group_size 128 --calib_data wikitext --output_path awq_model"
       size_factor: 0.22
       quality: "good"
+    w4-g128-zero-point:
+      description: "4-bit with zero-point (better accuracy)"
+      command: "python -m awq.entry --model_path merged_model --w_bit 4 --q_group_size 128 --zero_point --calib_data wikitext --output_path awq_model"
+      size_factor: 0.29
+      quality: "excellent+"
   conversion_steps:
     - "Merge LoRA adapters into base model (merge_lora.py)"
-    - "Run AWQ quantization with calibration data"
+    - "Run AWQ quantization with calibration data (wikitext/c4)"
   deployment:
     ollama: false
     lm_studio: false
     vllm: true
     tgi: true
+    sglang: true
     llama_cpp: false
+    exllamav2: false
   requirements:
-    - "Requires calibration dataset (wikitext or similar)"
+    - "Requires calibration dataset (wikitext, c4, or custom)"
     - "Only supports linear layers (no embedding quantization)"
+    - "Best for decoder-only models"
 
 gptq:
-  description: "GPTQ (Accurate Post-Training Quantization) for fast inference"
+  description: "GPTQ (Accurate Post-Training Quantization) with Marlin kernels for fast inference"
   tool: "auto-gptq"
   install: "pip install auto-gptq"
   quants:
     w4-g128:
-      description: "4-bit, group size 128"
-      command: "python -m auto_gptq.modeling.eval --model merged_model --quantize --bits 4 --group-size 128 --output gptq_model"
+      description: "4-bit, group size 128 (DEFAULT)"
+      command: "python -m auto_gptq --model merged_model --quantize --bits 4 --group-size 128 --output gptq_model --use-marlin"
       size_factor: 0.28
       quality: "excellent"
       recommended: true
     w4-g64:
-      description: "4-bit, group size 64"
-      command: "python -m auto_gptq.modeling.eval --model merged_model --quantize --bits 4 --group-size 64 --output gptq_model"
+      description: "4-bit, group size 64 (better quality)"
+      command: "python -m auto_gptq --model merged_model --quantize --bits 4 --group-size 64 --output gptq_model --use-marlin"
       size_factor: 0.30
       quality: "excellent+"
     w3-g128:
       description: "3-bit, group size 128"
-      command: "python -m auto_gptq.modeling.eval --model merged_model --quantize --bits 3 --group-size 128 --output gptq_model"
+      command: "python -m auto_gptq --model merged_model --quantize --bits 3 --group-size 128 --output gptq_model --use-marlin"
       size_factor: 0.22
       quality: "good"
+    w8-g128:
+      description: "8-bit, group size 128"
+      command: "python -m auto_gptq --model merged_model --quantize --bits 8 --group-size 128 --output gptq_model --use-marlin"
+      size_factor: 0.50
+      quality: "near-lossless"
   conversion_steps:
     - "Merge LoRA adapters into base model (merge_lora.py)"
-    - "Run GPTQ quantization with calibration data"
+    - "Run GPTQ quantization with calibration data and Marlin kernels"
   deployment:
     ollama: false
     lm_studio: false
     vllm: true
     tgi: true
+    sglang: true
     llama_cpp: false
+    exllamav2: false
   requirements:
     - "Requires calibration dataset"
     - "Slower quantization than AWQ"
+    - "Marlin kernels require Ampere+ (RTX 30-series, A100+)"
 
 exl2:
-  description: "EXL2 format for ExLlamaV2 inference engine"
-  tool: "exllama-v2"
+  description: "EXL2 format for ExLlamaV2 inference engine (fastest inference)"
+  tool: "exllamav2"
   install: "pip install exllamav2"
   quants:
     4.0bpw:
-      description: "4 bits per weight"
+      description: "4 bits per weight (RECOMMENDED)"
       command: "python -m exllamav2.convert -i merged_model -o exl2_model -b 4.0"
       size_factor: 0.25
       quality: "excellent"
@@ -149,10 +196,20 @@ exl2:
       size_factor: 0.19
       quality: "good"
     5.0bpw:
-      description: "5 bits per weight"
+      description: "5 bits per weight (highest quality)"
       command: "python -m exllamav2.convert -i merged_model -o exl2_model -b 5.0"
       size_factor: 0.31
       quality: "excellent+"
+    2.5bpw:
+      description: "2.5 bits per weight (experimental)"
+      command: "python -m exllamav2.convert -i merged_model -o exl2_model -b 2.5"
+      size_factor: 0.16
+      quality: "acceptable"
+    6.0bpw:
+      description: "6 bits per weight"
+      command: "python -m exllamav2.convert -i merged_model -o exl2_model -b 6.0"
+      size_factor: 0.37
+      quality: "near-lossless"
   conversion_steps:
     - "Merge LoRA adapters"
     - "Convert with exllamav2.convert"
@@ -163,9 +220,108 @@ exl2:
     tgi: false
     llama_cpp: false
     exllamav2: true
+    text_generation_webui: true
+
+exl3:
+  description: "EXL3 format for ExLlamaV3 (experimental, improved compression)"
+  tool: "exllamav3"
+  install: "pip install exllamav3"
+  quants:
+    4.0bpw:
+      description: "4 bits per weight"
+      command: "python -m exllamav3.convert -i merged_model -o exl3_model -b 4.0"
+      size_factor: 0.24
+      quality: "excellent"
+    3.0bpw:
+      description: "3 bits per weight"
+      command: "python -m exllamav3.convert -i merged_model -o exl3_model -b 3.0"
+      size_factor: 0.18
+      quality: "good"
+  conversion_steps:
+    - "Merge LoRA adapters"
+    - "Convert with exllamav3.convert"
+  deployment:
+    exllamav3: true
+    text_generation_webui: true
+  notes: "Experimental; check exllamav3 repo for latest"
+
+fp8:
+  description: "FP8 (E4M3) native quantization for Hopper/Blackwell GPUs"
+  tool: "transformers + torch"
+  install: "pip install transformers accelerate torch"
+  quants:
+    fp8_e4m3:
+      description: "FP8 E4M3 format (native on H100/H200/B200/RTX 5090)"
+      command: "python scripts/convert_to_fp8.py --model merged_model --output fp8_model --dtype fp8_e4m3"
+      size_factor: 0.50
+      quality: "excellent"
+      recommended: true
+    fp8_e5m2:
+      description: "FP8 E5M2 format"
+      command: "python scripts/convert_to_fp8.py --model merged_model --output fp8_model --dtype fp8_e5m2"
+      size_factor: 0.50
+      quality: "excellent"
+  conversion_steps:
+    - "Merge LoRA adapters"
+    - "Convert to FP8 with calibration"
+  deployment:
+    vllm: true
+    tgi: true
+    sglang: true
+    tensorrt_llm: true
+    ollama: false
+    llama_cpp: false
+  requirements:
+    - "Requires Hopper (H100/H200) or Blackwell (B200/RTX 5090) GPU"
+    - "Best with calibration dataset"
+    - "Native support in vLLM 0.6+, SGLang 0.4+, TensorRT-LLM"
+
+nvfp4:
+  description: "NVFP4 (NVIDIA 4-bit FP) for Blackwell GPUs"
+  tool: "tensorrt-llm / transformers"
+  install: "pip install tensorrt-llm (from NVIDIA container)"
+  quants:
+    nvfp4:
+      description: "NVFP4 block-wise quantization (256 elements/block)"
+      command: "python scripts/convert_to_nvfp4.py --model merged_model --output nvfp4_model"
+      size_factor: 0.25
+      quality: "excellent"
+      recommended: true
+  conversion_steps:
+    - "Merge LoRA adapters"
+    - "Convert to NVFP4 with TensorRT-LLM"
+  deployment:
+    tensorrt_llm: true
+    triton: true
+    vllm: false
+    sglang: false
+  requirements:
+    - "Requires Blackwell architecture (B200, RTX 5090, RTX 5080)"
+    - "TensorRT-LLM 0.12+"
+    - "Best for inference, not training"
+
+mxfp4:
+  description: "MXFP4 (Microscaling FP4) - OCP standard for FP4"
+  tool: "tensorrt-llm / onnx"
+  install: "pip install tensorrt-llm onnx"
+  quants:
+    mxfp4:
+      description: "MXFP4 with microscaling (32-element blocks)"
+      command: "python scripts/convert_to_mxfp4.py --model merged_model --output mxfp4_model"
+      size_factor: 0.25
+      quality: "excellent"
+  conversion_steps:
+    - "Merge LoRA adapters"
+    - "Convert to MXFP4"
+  deployment:
+    tensorrt_llm: true
+    onnx_runtime: true
+  requirements:
+    - "Requires Blackwell or future architectures"
+    - "Open standard (OCP)"
 
 hf-safetensors:
-  description: "HuggingFace native format (safetensors)"
+  description: "HuggingFace native format (safetensors) - full precision or BF16"
   tool: "transformers"
   install: "pip install transformers accelerate safetensors"
   quants:
@@ -180,6 +336,11 @@ hf-safetensors:
       command: "model.save_pretrained('output', safe_serialization=True, torch_dtype=torch.bfloat16)"
       size_factor: 0.5
       quality: "lossless"
+    fp8:
+      description: "FP8 quantized weights (experimental)"
+      command: "model.save_pretrained('output', safe_serialization=True, torch_dtype=torch.float8_e4m3fn)"
+      size_factor: 0.5
+      quality: "excellent"
   conversion_steps:
     - "Merge LoRA adapters (merge_lora.py)"
     - "Save with safe_serialization=True"
@@ -188,7 +349,9 @@ hf-safetensors:
     lm_studio: true
     vllm: true
     tgi: true
+    sglang: true
     llama_cpp: false
+    transformers: true
 
 onnx:
   description: "ONNX format for cross-platform inference"
@@ -205,6 +368,11 @@ onnx:
       command: "optimum-cli export onnx --model merged_model --task text-generation --dtype int8 onnx_model"
       size_factor: 0.25
       quality: "good"
+    int4:
+      description: "INT4 quantized ONNX"
+      command: "optimum-cli export onnx --model merged_model --task text-generation --dtype int4 onnx_model"
+      size_factor: 0.15
+      quality: "acceptable"
   conversion_steps:
     - "Merge LoRA adapters"
     - "Export with optimum-cli"
@@ -212,27 +380,43 @@ onnx:
     onnx_runtime: true
     openvino: true
     tensorrt: true
+    azure_ml: true
 
 tensorrt-llm:
   description: "TensorRT-LLM for maximum inference performance on NVIDIA GPUs"
   tool: "tensorrt-llm"
-  install: "pip install tensorrt-llm (from NVIDIA container)"
+  install: "Use NVIDIA container: nvcr.io/nvidia/tensorrt-llm:latest"
   quants:
     fp16:
       description: "FP16 TensorRT engine"
       command: "trtllm-build --checkpoint_dir merged_model --output_dir trt_engine --dtype float16"
       size_factor: 0.5
       quality: "lossless"
+    bf16:
+      description: "BF16 TensorRT engine"
+      command: "trtllm-build --checkpoint_dir merged_model --output_dir trt_engine --dtype bfloat16"
+      size_factor: 0.5
+      quality: "lossless"
+    fp8:
+      description: "FP8 quantized engine (Hopper+)"
+      command: "trtllm-build --checkpoint_dir merged_model --output_dir trt_engine --dtype fp8 --calib_data calib_data.json"
+      size_factor: 0.5
+      quality: "excellent"
     int8:
       description: "INT8 quantized engine"
       command: "trtllm-build --checkpoint_dir merged_model --output_dir trt_engine --dtype int8 --calib_data calib_data.json"
       size_factor: 0.25
       quality: "excellent"
     int4:
-      description: "INT4 quantized engine"
-      command: "trtllm-build --checkpoint_dir merged_model --output_dir trt_engine --dtype int4 --calib_data calib_data.json"
+      description: "INT4 quantized engine (AWQ/GPTQ)"
+      command: "trtllm-build --checkpoint_dir merged_model --output_dir trt_engine --dtype int4 --calib_data calib_data.json --quant_algo awq"
       size_factor: 0.15
       quality: "good"
+    nvfp4:
+      description: "NVFP4 engine (Blackwell)"
+      command: "trtllm-build --checkpoint_dir merged_model --output_dir trt_engine --dtype nvfp4"
+      size_factor: 0.25
+      quality: "excellent"
   conversion_steps:
     - "Merge LoRA adapters"
     - "Build TensorRT engine"
@@ -241,11 +425,25 @@ tensorrt-llm:
     triton: true
 
 deployment_compatibility:
-  # Format → Deployment targets
-  GGUF: ["Ollama", "LM Studio", "llama.cpp", "text-generation-webui", "KoboldCPP"]
-  AWQ: ["vLLM", "TGI", "FastChat"]
-  GPTQ: ["vLLM", "TGI", "FastChat", "AutoGPTQ"]
-  EXL2: ["ExLlamaV2", "text-generation-webui"]
-  HF_SAFETENSORS: ["vLLM", "TGI", "FastChat", "Ollama", "LM Studio", "Transformers"]
-  ONNX: ["ONNX Runtime", "OpenVINO", "TensorRT"]
+  GGUF: ["Ollama", "LM Studio", "llama.cpp", "text-generation-webui", "KoboldCPP", "Jan", "GPT4All"]
+  AWQ: ["vLLM", "TGI", "SGLang", "FastChat", "TensorRT-LLM"]
+  GPTQ: ["vLLM", "TGI", "SGLang", "FastChat", "AutoGPTQ", "TensorRT-LLM"]
+  EXL2: ["ExLlamaV2", "text-generation-webui", "KoboldCPP"]
+  EXL3: ["ExLlamaV3", "text-generation-webui"]
+  FP8: ["vLLM", "SGLang", "TensorRT-LLM", "TGI"]
+  NVFP4: ["TensorRT-LLM", "Triton"]
+  MXFP4: ["TensorRT-LLM", "ONNX Runtime"]
+  HF_SAFETENSORS: ["vLLM", "TGI", "SGLang", "Ollama", "LM Studio", "Transformers", "FastChat"]
+  ONNX: ["ONNX Runtime", "OpenVINO", "TensorRT", "Azure ML"]
   TENSORRT_LLM: ["TensorRT-LLM", "Triton Inference Server"]
+
+recommendations_by_use_case:
+  local_llm_apple: "GGUF Q4_K_M"
+  local_llm_nvidia: "GGUF Q4_K_M or AWQ w4-g128"
+  local_llm_exllama: "EXL2 4.0bpw"
+  production_vllm: "AWQ w4-g128 or FP8 (H100+) or NVFP4 (Blackwell)"
+  production_tgi: "AWQ w4-g128 or GPTQ w4-g128"
+  production_tensorrt: "FP8 (H100+) or NVFP4 (Blackwell) or INT4 AWQ"
+  edge_mobile: "GGUF Q4_K_M or Q3_K_M"
+  max_quality: "HF BF16 or FP16"
+  max_speed: "EXL2 4.0bpw or TensorRT-LLM FP8/NVFP4"
