@@ -1,0 +1,47 @@
+# TorchTune SFT Full Fine-tuning Config
+# Run with: tune run full_finetune_single_device --config templates/torchtune/sft_full.yaml
+
+model:
+  _component_: torchtune.models.llama3_1.llama3_1_8b
+  tokenizer:
+    _component_: torchtune.models.llama3.llama3_tokenizer
+    path: meta-llama/Llama-3.1-8B-Instruct
+
+checkpointer:
+  _component_: torchtune.training.FullModelHFCheckpointer
+  checkpoint_dir: meta-llama/Llama-3.1-8B-Instruct
+  output_dir: outputs/torchtune-sft-full
+  model_type: LLAMA3
+
+dataset:
+  _component_: torchtune.datasets.AlpacaDataset
+  source: data/train.jsonl
+  train_on_input: false
+  split: train
+
+dataloader:
+  _component_: torchtune.data.Dataloader
+  batch_size: 1
+  shuffle: true
+  num_workers: 2
+
+optimizer:
+  _component_: torch.optim.AdamW
+  lr: 2e-5
+  weight_decay: 0.01
+  eps: 1e-8
+
+lr_scheduler:
+  _component_: torchtune.training.lr_schedulers.get_cosine_schedule_with_warmup
+  num_warmup_steps: 100
+
+training:
+  epochs: 1
+  batch_size: 1
+  gradient_accumulation_steps: 16
+  compile: true
+  gradient_clipping: 1.0
+  mixed_precision: bf16
+
+log_every_n_steps: 10
+save_every_n_steps: 500
