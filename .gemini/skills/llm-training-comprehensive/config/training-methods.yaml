@@ -1,0 +1,251 @@
+sft:
+  description: "Supervised Fine-Tuning on instruction/response pairs"
+  frameworks:
+    unsloth:
+      script: "templates/unsloth/sft_lora.py"
+      default_config: "config/unsloth_sft_lora.yaml"
+      supports: ["lora", "qlora", "full", "dora"]
+      multi_gpu: "ddp"
+    axolotl:
+      config: "templates/axolotl/sft_lora.yaml"
+      supports: ["lora", "qlora", "full", "dora", "vera", "loha", "lokr"]
+      multi_gpu: ["fsdp", "deepspeed"]
+    llama-factory:
+      config: "templates/llama-factory/sft_lora.yaml"
+      cli: "llamafactory-cli train"
+      supports: ["lora", "qlora", "full"]
+      multi_gpu: "deepspeed"
+    trl:
+      script: "templates/trl/sft_trainer.py"
+      supports: ["lora", "qlora", "full"]
+      multi_gpu: "accelerate"
+    torchtune:
+      config: "templates/torchtune/sft_lora.yaml"
+      supports: ["lora", "full"]
+      multi_gpu: "fsdp"
+    raw-transformers:
+      script: "templates/raw-transformers/sft_lora.py"
+      supports: ["lora", "qlora", "full"]
+      multi_gpu: "manual"
+  hyperparameters:
+    learning_rate:
+      lora: 2e-4
+      qlora: 2e-4
+      full: 2e-5
+    num_epochs: 3
+    max_seq_length: 4096
+    packing: true
+    warmup_ratio: 0.03
+    weight_decay: 0.01
+    optimizer:
+      lora: "adamw_bnb_8bit"
+      qlora: "adamw_bnb_8bit"
+      full: "adamw_torch_fused"
+  dataset_format: "sharegpt"
+  val_split: 0.05
+
+dpo:
+  description: "Direct Preference Optimization with chosen/rejected pairs"
+  frameworks:
+    unsloth:
+      script: "templates/unsloth/dpo_lora.py"
+      default_config: "config/unsloth_dpo_lora.yaml"
+      supports: ["lora", "qlora"]
+      multi_gpu: "ddp"
+    axolotl:
+      config: "templates/axolotl/dpo_lora.yaml"
+      supports: ["lora", "qlora", "full"]
+      multi_gpu: ["fsdp", "deepspeed"]
+    llama-factory:
+      config: "templates/llama-factory/dpo_lora.yaml"
+      cli: "llamafactory-cli train"
+      supports: ["lora", "qlora"]
+      multi_gpu: "deepspeed"
+    trl:
+      script: "templates/trl/dpo_trainer.py"
+      supports: ["lora", "qlora", "full"]
+      multi_gpu: "accelerate"
+    raw-transformers:
+      script: "templates/raw-transformers/dpo_lora.py"
+      supports: ["lora", "qlora"]
+      multi_gpu: "manual"
+  hyperparameters:
+    learning_rate: 5e-7
+    num_epochs: 1
+    beta: 0.1
+    loss_type: "sigmoid"
+    max_length: 1024
+    max_prompt_length: 512
+    optimizer: "adamw_bnb_8bit"
+  dataset_format: "dpo"
+  val_split: 0.05
+
+kto:
+  description: "Kahneman-Tversky Optimization with unpaired preferences"
+  frameworks:
+    trl:
+      script: "templates/trl/kto_trainer.py"
+      supports: ["lora", "qlora"]
+      multi_gpu: "accelerate"
+    axolotl:
+      config: "templates/axolotl/kto_lora.yaml"
+      supports: ["lora", "qlora"]
+      multi_gpu: ["fsdp", "deepspeed"]
+  hyperparameters:
+    learning_rate: 5e-7
+    num_epochs: 1
+    beta: 0.1
+    desirable_weight: 1.0
+    undesirable_weight: 1.0
+    optimizer: "adamw_bnb_8bit"
+  dataset_format: "kto"
+  val_split: 0.05
+
+orpo:
+  description: "Odds Ratio Preference Optimization - single stage alignment"
+  frameworks:
+    trl:
+      script: "templates/trl/orpo_trainer.py"
+      supports: ["lora", "qlora"]
+      multi_gpu: "accelerate"
+    axolotl:
+      config: "templates/axolotl/orpo_lora.yaml"
+      supports: ["lora", "qlora"]
+      multi_gpu: ["fsdp", "deepspeed"]
+  hyperparameters:
+    learning_rate: 1e-5
+    num_epochs: 1
+    beta: 0.1
+    optimizer: "adamw_bnb_8bit"
+  dataset_format: "orpo"
+  val_split: 0.05
+
+ppo:
+  description: "Proximal Policy Optimization with reward model"
+  frameworks:
+    trl:
+      script: "templates/trl/ppo_trainer.py"
+      supports: ["lora", "qlora", "full"]
+      multi_gpu: "accelerate"
+    axolotl:
+      config: "templates/axolotl/ppo_lora.yaml"
+      supports: ["lora", "qlora"]
+      multi_gpu: ["deepspeed"]
+  hyperparameters:
+    learning_rate: 1e-6
+    ppo_epochs: 4
+    mini_batch_size: 16
+    batch_size: 64
+    kl_penalty: "kl"
+    init_kl_coef: 0.2
+    optimizer: "adamw_torch_fused"
+  dataset_format: "rl"
+  val_split: 0.05
+
+grpo:
+  description: "Group Relative Policy Optimization - DeepSeek style RL"
+  frameworks:
+    trl:
+      script: "templates/trl/grpo_trainer.py"
+      supports: ["lora", "qlora", "full"]
+      multi_gpu: "accelerate"
+    unsloth:
+      script: "templates/unsloth/grpo_lora.py"
+      supports: ["lora", "qlora"]
+      multi_gpu: "ddp"
+  hyperparameters:
+    learning_rate: 1e-6
+    num_generations: 8
+    max_completion_length: 512
+    beta: 0.04
+    temperature: 0.7
+    optimizer: "adamw_torch_fused"
+  dataset_format: "rl"
+  val_split: 0.05
+
+cpo:
+  description: "Contrastive Preference Optimization"
+  frameworks:
+    trl:
+      script: "templates/trl/cpo_trainer.py"
+      supports: ["lora", "qlora"]
+      multi_gpu: "accelerate"
+  hyperparameters:
+    learning_rate: 1e-5
+    num_epochs: 1
+    beta: 0.1
+    optimizer: "adamw_bnb_8bit"
+  dataset_format: "cpo"
+  val_split: 0.05
+
+simpo:
+  description: "Simple Preference Optimization - reference-free DPO variant"
+  frameworks:
+    trl:
+      script: "templates/trl/simpo_trainer.py"
+      supports: ["lora", "qlora"]
+      multi_gpu: "accelerate"
+  hyperparameters:
+    learning_rate: 5e-7
+    num_epochs: 1
+    beta: 2.0
+    gamma: 0.5
+    optimizer: "adamw_bnb_8bit"
+  dataset_format: "simpo"
+  val_split: 0.05
+
+reward-modeling:
+  description: "Train reward model from preference data for PPO"
+  frameworks:
+    trl:
+      script: "templates/trl/reward_trainer.py"
+      supports: ["lora", "qlora", "full"]
+      multi_gpu: "accelerate"
+    axolotl:
+      config: "templates/axolotl/reward_modeling.yaml"
+      supports: ["lora", "qlora"]
+      multi_gpu: ["fsdp", "deepspeed"]
+    llama-factory:
+      config: "templates/llama-factory/reward_modeling.yaml"
+      cli: "llamafactory-cli train"
+      supports: ["lora", "qlora"]
+      multi_gpu: "deepspeed"
+  hyperparameters:
+    learning_rate: 1e-5
+    num_epochs: 1
+    max_length: 1024
+    optimizer: "adamw_torch_fused"
+  dataset_format: "reward"
+  val_split: 0.05
+
+continued-pretraining:
+  description: "Continued pretraining on raw text corpora"
+  frameworks:
+    unsloth:
+      script: "templates/unsloth/pretrain.py"
+      supports: ["lora", "qlora", "full"]
+      multi_gpu: "ddp"
+    axolotl:
+      config: "templates/axolotl/pretrain.yaml"
+      supports: ["lora", "qlora", "full"]
+      multi_gpu: ["fsdp", "deepspeed"]
+    llama-factory:
+      config: "templates/llama-factory/pretrain.yaml"
+      cli: "llamafactory-cli train"
+      supports: ["lora", "qlora", "full"]
+      multi_gpu: "deepspeed"
+    torchtune:
+      config: "templates/torchtune/pretrain.yaml"
+      supports: ["lora", "full"]
+      multi_gpu: "fsdp"
+  hyperparameters:
+    learning_rate:
+      lora: 1e-4
+      full: 1e-5
+    num_epochs: 1
+    max_seq_length: 8192
+    packing: true
+    warmup_ratio: 0.05
+    optimizer: "adamw_torch_fused"
+  dataset_format: "text"
+  val_split: 0.01

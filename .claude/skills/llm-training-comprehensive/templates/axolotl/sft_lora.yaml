@@ -1,0 +1,43 @@
+base_model: meta-llama/Llama-3.1-8B-Instruct
+model_type: LoraForCausalLM
+model_config:
+  load_in_4bit: true
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+datasets:
+  - path: data/train.jsonl
+    type: sharegpt
+    field_messages: conversations
+
+sequence_len: 4096
+sample_packing: true
+pad_to_sequence_len: true
+
+micro_batch_size: 2
+gradient_accumulation_steps: 4
+num_epochs: 3
+learning_rate: 2e-4
+lr_scheduler: cosine
+warmup_ratio: 0.03
+optimizer: adamw_bnb_8bit
+bf16: auto
+
+logging_steps: 10
+save_steps: 500
+output_dir: outputs/axolotl-sft-lora
+
+flash_attention: true
+gradient_checkpointing: true
+
+wandb_project: llm-finetune
+wandb_name: axolotl-llama31-8b-sft-lora
